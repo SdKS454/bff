@@ -36,7 +36,8 @@ public class JwtAuthFilter implements Filter {
         HttpServletResponse resp = (HttpServletResponse) response;
         String path = req.getRequestURI().substring(req.getContextPath().length());
 
-        if ((("/api/auth/login".equals(path) || "/api/auth/register".equals(path)) && "POST".equals(req.getMethod()))
+        if ((("/api/auth/login".equals(path) || "/api/auth/register".equals(path)
+                || "/api/auth/logout".equals(path)) && "POST".equals(req.getMethod()))
                 || ("/api/users/exists".equals(path) && "GET".equals(req.getMethod()))) {
             chain.doFilter(request, response);
             return;

@@ -1,5 +1,8 @@
 # Проверка и доработка BFF
 
+> Это отчёт о первоначальной версии. Актуальные изменения регистрации, ADMIN и
+> logout после получения готового User Service — в [USER_SERVICE_SYNC.md](USER_SERVICE_SYNC.md).
+
 ## Основание и границы
 
 Прочитаны все Java-классы, JavaScript, JSP, конфигурация и pom.xml из

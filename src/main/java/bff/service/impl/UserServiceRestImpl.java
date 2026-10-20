@@ -39,6 +39,11 @@ public class UserServiceRestImpl implements UserService {
     }
 
     @Override
+    public JsonResponse logout(String jwt) {
+        return send("POST", URI.create(BASE + "/api/users/logout"), jwt, "{}");
+    }
+
+    @Override
     public JsonResponse profile(String jwt) {
         return send("GET", URI.create(BASE + "/api/users/me"), jwt, null);
     }

@@ -8,7 +8,10 @@
 </head>
 <body data-ctx="${pageContext.request.contextPath}">
   <h2>Ближайшие самокаты</h2>
-  <p><a href="logout">Выйти</a>
+  <form method="post" action="${pageContext.request.contextPath}/logout">
+    <button type="submit">Выйти</button>
+  </form>
+  <p>
     <button type="button" id="btn-refresh">Обновить</button>
   </p>
   <p id="coords" class="muted"></p>

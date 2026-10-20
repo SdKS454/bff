@@ -1,4 +1,4 @@
-/* Shared same-origin API client. JWT stays in the HttpOnly server session. */
+/* Same-origin API client. BFF uses an HttpOnly session; ADMIN login also hands JWT to Moderation via a URL fragment. */
 async function apiRequest(path, options = {}) {
   const ctx = document.body.dataset.ctx || '';
   const response = await fetch(ctx + path, options);

@@ -27,6 +27,7 @@ class BffIT {
     static final List<Call> calls = new CopyOnWriteArrayList<>();
     static volatile int validateStatus, blockedStatus, rideStatus, loginStatus, documentStatus;
     static volatile String blockedBody, profile, loginBody, documentContentType;
+    static volatile int logoutStatus;
     static volatile byte[] documentBody;
     static volatile String rideState;
     HttpClient client;
@@ -38,6 +39,7 @@ class BffIT {
         backend.start();
         String url = "http://localhost:" + backend.getAddress().getPort();
         for (String service : List.of("user", "scooter", "ride", "document")) System.setProperty(service + ".service.url", url);
+        System.setProperty("moderation.panel.url", "https://moderation.example/panel/");
         tomcat = new Tomcat();
         Path tomcatBase = Files.createTempDirectory("bff-tomcat-");
         Files.createDirectories(tomcatBase.resolve("webapps"));
@@ -51,6 +53,7 @@ class BffIT {
         base = "http://127.0.0.1:" + tomcat.getConnector().getLocalPort() + "/scooter-bff";
     }
     @AfterAll static void stop() throws Exception {
+        System.clearProperty("moderation.panel.url");
         if (tomcat != null) { tomcat.stop(); tomcat.destroy(); }
         if (backend != null) backend.stop(0);
         assertFalse(Thread.getAllStackTraces().keySet().stream().anyMatch(t -> t.isAlive() && t.getName().startsWith("bff-http-")), "HTTP executor must stop on undeploy");
@@ -65,6 +68,7 @@ class BffIT {
         documentContentType = "application/pdf";
         documentBody = "%PDF-1.4\nfixture\n%%EOF".getBytes(StandardCharsets.US_ASCII);
         rideState = "ACTIVE";
+        logoutStatus = 204;
         client = HttpClient.newBuilder().cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL)).build();
     }
     static void handle(HttpExchange e) throws IOException {
@@ -75,6 +79,7 @@ class BffIT {
         String result = "{}";
         if (path.endsWith("/validate")) status = validateStatus;
         else if (path.equals("/api/users/login")) { status = loginStatus; result = loginBody; }
+        else if (path.equals("/api/users/logout")) { status = logoutStatus; result = "{\"error\":\"Logout unavailable\"}"; }
         else if (path.equals("/api/users/register")) { status = 201; result = profile; }
         else if (path.equals("/api/users/me")) result = profile;
         else if (path.equals("/api/users/exists")) result = "{\"exists\":true}";
@@ -121,7 +126,7 @@ class BffIT {
         }
     }
     @Test void publicRegistrationDropsClientRole() throws Exception {
-        var response = request("POST", "/api/auth/register", "{\"login\":\"ivan\",\"password\":\"secret\",\"role\":\"ADMIN\"}", null);
+        var response = request("POST", "/api/auth/register", "{\"login\":\"ivan\",\"password\":\"secret123\",\"fullName\":\"Иван Петров\",\"birthDate\":\"2000-05-17\",\"role\":\"ADMIN\"}", null);
         assertEquals(201, response.statusCode(), response.body());
         assertFalse(last("/api/users/register").body().contains("role"));
         assertFalse(called("/api/users/validate"));
@@ -136,8 +141,42 @@ class BffIT {
         assertEquals("Bearer jwt-test", last("/api/users/me").authorization());
         assertEquals(401, request("GET", "/api/users/me", null, "Basic invalid").statusCode());
         assertEquals(401, request("GET", "/api/users/me", null, "Bearer ").statusCode());
-        assertEquals(302, request("GET", "/logout", null, null).statusCode());
+        assertEquals(303, request("POST", "/logout", null, null).statusCode());
         assertEquals(401, request("GET", "/api/users/me", null, null).statusCode());
+    }
+    @Test void logoutRevokesCurrentBearerBeforeClearingSession() throws Exception {
+        request("POST", "/api/auth/login", "{\"login\":\"ivan\",\"password\":\"secret\"}", null);
+        var response = request("POST", "/api/auth/logout", null, "Bearer explicit-token");
+        assertEquals(204, response.statusCode());
+        assertEquals("POST", last("/api/users/logout").method());
+        assertEquals("Bearer explicit-token", last("/api/users/logout").authorization());
+        assertEquals(401, request("GET", "/api/users/me", null, null).statusCode());
+    }
+    @Test void logoutDoesNotPrevalidateAndHandlesAlreadyRevokedToken() throws Exception {
+        validateStatus = 401; logoutStatus = 401;
+        assertEquals(204, request("POST", "/api/auth/logout", null, "Bearer expired").statusCode());
+        assertFalse(called("/api/users/validate"));
+        assertEquals(204, request("POST", "/api/auth/logout", null, null).statusCode());
+    }
+    @Test void failedRevocationIsNotReportedAsSuccessfulLogout() throws Exception {
+        request("POST", "/api/auth/login", "{\"login\":\"ivan\",\"password\":\"secret\"}", null);
+        logoutStatus = 503;
+        var response = request("POST", "/api/auth/logout", null, null);
+        assertEquals(503, response.statusCode());
+        assertTrue(response.body().contains("не подтвердил отзыв"));
+        assertEquals(401, request("GET", "/api/users/me", null, null).statusCode());
+    }
+    @Test void logoutGetIsConfirmationAndNeverRevokes() throws Exception {
+        var response = request("GET", "/logout", null, null);
+        assertEquals(200, response.statusCode());
+        assertTrue(response.body().contains("method=\"post\""));
+        assertFalse(called("/api/users/logout"));
+    }
+    @Test void authenticatedFrontendConfigHasTrustedModerationDestination() throws Exception {
+        assertEquals(401, request("GET", "/api/config", null, null).statusCode());
+        var response = request("GET", "/api/config", null, "Bearer t");
+        assertEquals(200, response.statusCode());
+        assertEquals("{\"moderationPanelUrl\":\"https://moderation.example/panel/\"}", response.body());
     }
     @Test void usernameQueryIsEncodedOnce() throws Exception {
         assertEquals(200, request("GET", "/api/users/exists?login=a%2Bb%26c", null, null).statusCode());
@@ -169,7 +208,7 @@ class BffIT {
         assertEquals("Bearer original", last("/api/rides").authorization());
     }
     @Test void fullBffRentalFlowWithSessionAndPdf() throws Exception {
-        assertEquals(201, request("POST", "/api/auth/register", "{\"login\":\"ivan\",\"password\":\"secret\"}", null).statusCode());
+        assertEquals(201, request("POST", "/api/auth/register", "{\"login\":\"ivan\",\"password\":\"secret123\",\"fullName\":\"Иван Петров\",\"birthDate\":\"2000-05-17\"}", null).statusCode());
         assertEquals(200, request("POST", "/api/auth/login", "{\"login\":\"ivan\",\"password\":\"secret\"}", null).statusCode());
         assertEquals(200, request("POST", "/api/scooters/nearest", "{\"posX\":10,\"posY\":20}", null).statusCode());
         assertEquals(201, request("POST", "/api/rides", "{\"numberPlate\":\"A123BC\"}", null).statusCode());
@@ -180,7 +219,7 @@ class BffIT {
         assertEquals("application/pdf", pdf.headers().firstValue("Content-Type").orElseThrow());
         assertTrue(pdf.body().startsWith("%PDF-"));
         assertEquals("no-store", pdf.headers().firstValue("Cache-Control").orElseThrow());
-        assertEquals(302, request("GET", "/logout", null, null).statusCode());
+        assertEquals(303, request("POST", "/logout", null, null).statusCode());
     }
     @Test void blockedUserCannotStartButMayFinishPayOrRequestDocument() throws Exception {
         blockedBody = "{\"blocked\":true}";

@@ -12,7 +12,7 @@ Node.js 18+. Целевая версия Java — 17.
 
 ```sh
 mvn clean verify
-node --test src/test/js/ui.test.cjs
+node --test src/test/js/*.test.cjs
 ```
 
 `verify` выполняет unit-тесты JSON, собирает `target/scooter-bff.war`, затем
@@ -51,8 +51,9 @@ JWT проверяется через User Service, локальный JWT-се�
 
 ## API и поведение
 
-Базовые 13 endpoint-ов из приложенного REST-документа сохранены.
-Изменения и найденные ошибки описаны в [docs/REVIEW.md](docs/REVIEW.md).
+Базовые маршруты из REST-документа сохранены; logout переведён на POST.
+Первичная проверка описана в [docs/REVIEW.md](docs/REVIEW.md), актуальная
+синхронизация с готовым User — в [docs/USER_SERVICE_SYNC.md](docs/USER_SERVICE_SYNC.md).
 
 - ID пользователя, поездки, тарифа и источника документа — UUID.
 - При регистрации роль клиента игнорируется и не пересылается; User обязан
@@ -64,8 +65,10 @@ JWT проверяется через User Service, локальный JWT-се�
 - PDF: RIDE_PAYMENT, USER_BLOCKED, USER_HISTORY. Старое RECEIPT принимается как
   alias RIDE_PAYMENT. Пользователь определяется через `/api/users/me`, клиентский
   userId не используется; sourceId для RIDE_PAYMENT — UUID поездки.
-- `/logout` завершает только сессию BFF — как определено текущим REST-документом.
-  Отзыв JWT в User Service этим контрактом не предусмотрен.
+- `POST /api/auth/logout` отзывает JWT через User Service и завершает сессию BFF;
+  `POST /logout` делает то же для формы и возвращает 303 на login.jsp.
+  `GET /logout` только показывает подтверждение. Если User недоступен, сессия
+  закрывается, но API сообщает ошибку отзыва токена, а не успешный общий выход.
 
 Проверку владельца поездки при finish/pay и генерации чека дополнительно
 выполняют Ride/Documents по JWT. BFF не может гарантировать их реализацию.
@@ -82,8 +85,31 @@ MAVEN_OPTS='-Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts' \
 /workspace/tools/apache-maven-3.9.11/bin/mvn \
   -s /workspace/tools/maven-settings.xml \
   -Dmaven.repo.local=/workspace/.m2 clean verify
-node --test src/test/js/ui.test.cjs
+node --test src/test/js/*.test.cjs
 ```
 
 На локальном компьютере с JDK/Maven и обычным доступом к Maven Central
 достаточно стандартных команд из первого раздела.
+
+## Регистрация и вход ADMIN
+
+Дата рождения обязательна: от 1900-01-01 до текущей даты UTC. Логин — 3–64
+символа латиницы, цифр, _, . или -; пароль — минимум 8 символов и максимум
+72 байта UTF-8; fullName — непустое имя до 200 символов без управляющих символов.
+Правила проверяются формой, BFF и окончательно User Service; ошибки API видны в форме.
+
+USER после входа открывает main.jsp. ADMIN переходит на панель с JWT в
+`#accessToken=...`. Для локального стенда выбран адрес из примера коллег:
+`http://localhost:8082/admin/users.html`. Команда Moderation должна отдавать
+панель именно по этому пути либо сообщить другой путь. Порт 8082 сам по себе
+не определяет путь страницы, реальная панель этим репозиторием не проверена.
+
+Переопределение: JVM-свойство `-Dmoderation.panel.url=...` или переменная
+`MODERATION_PANEL_URL` (JVM-свойство приоритетнее). Допустим полный HTTP(S) URL
+без логина/пароля и фрагмента. `GET /api/config` после авторизации возвращает
+`moderationPanelUrl`; произвольный URL из параметров браузера не используется.
+Вне локального стенда используйте HTTPS. Панель должна сразу удалить фрагмент
+из адресной строки после чтения токена.
+
+Для стандартного Tomcat на порте 8080 адрес формы входа:
+`http://localhost:8080/scooter-bff/login.jsp`; при другом Connector port меняется порт.

@@ -7,6 +7,7 @@ import bff.dto.UserDto;
 import bff.service.ServiceException;
 import bff.service.UserService;
 import bff.service.impl.JsonText;
+import bff.service.impl.RegistrationRules;
 import bff.service.impl.UserServiceRestImpl;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -37,7 +38,7 @@ public class AuthServlet extends BaseServlet {
         try {
             AuthRequest body = readAuth(req);
             if ("/register".equals(action)) {
-                JsonResponse registered = userService.register(body);
+                JsonResponse registered = userService.register(RegistrationRules.validate(body));
                 writeJson(resp, registered.status(), registered.body());
                 return;
             }

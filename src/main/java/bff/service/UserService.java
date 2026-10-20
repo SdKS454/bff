@@ -13,6 +13,8 @@ public interface UserService {
 
     AuthResponse login(AuthRequest request);
 
+    JsonResponse logout(String jwt);
+
     JsonResponse profile(String jwt);
 
     UserDto currentUser(String jwt);
