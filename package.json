@@ -1,0 +1,9 @@
+{
+  "name": "scooter-bff-frontend-tests",
+  "private": true,
+  "scripts": {
+    "test": "node --test src/test/js/*.test.cjs",
+    "test:e2e": "node --test --test-concurrency=1 src/test/browser/*.test.cjs"
+  },
+  "devDependencies": { "playwright": "1.62.1" }
+}

@@ -118,11 +118,16 @@ class BffIT {
     }
     Call last(String path) { return calls.stream().filter(c -> c.path().equals(path)).reduce((a,b) -> b).orElseThrow(); }
     boolean called(String path) { return calls.stream().anyMatch(c -> c.path().equals(path)); }
-    @Test void warAndJspPagesAreAvailable() throws Exception {
-        for (String page : List.of("/", "/login.jsp", "/register.jsp", "/main.jsp")) {
-            var response = request("GET", page, null, null);
-            assertEquals(200, response.statusCode(), response.body());
-            assertTrue(response.body().contains("<!DOCTYPE html>"));
+    @Test void scootxPageAndLegacyEntryPointsAreAvailable() throws Exception {
+        var response = request("GET", "/", null, null);
+        assertEquals(200, response.statusCode(), response.body());
+        assertTrue(response.body().contains("ScootX"));
+        assertTrue(response.body().contains("/scooter-bff/frontend/api.js"));
+        assertFalse(response.body().contains("demo-storage.js"));
+        for (String page : List.of("/login.jsp", "/register.jsp", "/main.jsp")) {
+            response = request("GET", page, null, null);
+            assertEquals(302, response.statusCode());
+            assertTrue(response.headers().firstValue("Location").orElseThrow().startsWith("/scooter-bff/?"));
         }
     }
     @Test void publicRegistrationDropsClientRole() throws Exception {

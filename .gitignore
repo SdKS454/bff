@@ -27,3 +27,8 @@ replay_pid*
 /target/
 /.idea/
 *.iml
+
+# Frontend test dependencies and browser output
+/node_modules/
+/test-results/
+/playwright-report/
