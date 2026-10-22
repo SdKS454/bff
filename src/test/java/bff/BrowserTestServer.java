@@ -97,14 +97,15 @@ public final class BrowserTestServer {
         Tomcat tomcat = new Tomcat();
         Path base = Files.createTempDirectory("scootx-browser-"); Files.createDirectories(base.resolve("webapps"));
         tomcat.setBaseDir(base.toString()); tomcat.setPort(0); tomcat.getConnector().setProperty("address", "127.0.0.1");
-        var context = tomcat.addWebapp("/scooter-bff", Path.of("target/scooter-bff.war").toAbsolutePath().toString());
+        String contextPath = System.getProperty("bff.test.context", "/scooter-bff");
+        var context = tomcat.addWebapp(contextPath, Path.of("target/scooter-bff.war").toAbsolutePath().toString());
         context.setParentClassLoader(BrowserTestServer.class.getClassLoader()); tomcat.start();
         if (!context.getState().isAvailable()) throw new IllegalStateException("BFF WAR failed to deploy");
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try { tomcat.stop(); tomcat.destroy(); } catch (Exception ignored) { }
             fixtureServer.stop(0);
         }));
-        System.out.println("SCOOTX_TEST_URL=http://127.0.0.1:" + tomcat.getConnector().getLocalPort() + "/scooter-bff/");
+        System.out.println("SCOOTX_TEST_URL=http://127.0.0.1:" + tomcat.getConnector().getLocalPort() + contextPath + "/");
         System.out.println("SCOOTX_FIXTURE_URL=" + fixtureBase); System.out.flush();
         tomcat.getServer().await();
     }

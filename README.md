@@ -11,14 +11,18 @@ Tomcat 10.1, Maven; фронтенд — обычные HTML/CSS/JavaScript бе
 mvn clean verify
 ```
 
-Поместите `target/scooter-bff.war` в `webapps` Tomcat 10.1. При стандартном
-Connector port=8080 сайт открывается по адресу:
+Для согласованного локального стенда задайте в Tomcat порт 8080 и контекст `/`.
+В IDE это Application context `/`; при обычном развёртывании разместите сборку
+`target/scooter-bff.war` как `webapps/ROOT.war` (сохранив прежнее ROOT-приложение,
+если оно нужно). Адрес сайта: **http://localhost:8080/**.
 
-**http://localhost:8080/scooter-bff/**
+Имя Maven-сборки не менялось. Если разместить файл без переименования как
+`webapps/scooter-bff.war`, Tomcat назначит другой контекст `/scooter-bff`.
+Это альтернативное развёртывание; для текущего локального стенда согласован `/`.
 
 Старые `/login.jsp`, `/register.jsp`, `/main.jsp` перенаправляют на нужный экран
 ScootX. Адрес входа для Moderation остаётся
-`http://localhost:8080/scooter-bff/login.jsp` (если порт BFF — 8080).
+`http://localhost:8080/login.jsp` (если порт BFF — 8080).
 Открытие исходного HTML двойным щелчком больше не является способом запуска:
 для API и HTTP-сессии нужен BFF в Tomcat. npm/Node для запуска приложения не нужны.
 
@@ -98,7 +102,7 @@ Node.js 18+ и Playwright нужны только для разработки/п
 
 ```sh
 python3 scripts/check-user-integration.py \
-  --bff-url http://localhost:8080/scooter-bff \
+  --bff-url http://localhost:8080 \
   --user-url http://localhost:8081
 ```
 
@@ -136,3 +140,9 @@ CHROMIUM_EXECUTABLE=/workspace/tools/chrome/opt/google/chrome/chrome npm run tes
 Системное хранилище доверия и HTTP(S)-прокси используются без отключения TLS.
 На обычном локальном компьютере достаточно стандартных JDK/Maven-команд выше.
 Исторический отчёт первой доработки BFF — [REVIEW.md](docs/REVIEW.md).
+
+Текущие адреса и контракт входа ADMIN: [API_CONTRACTS.md](docs/API_CONTRACTS.md).
+
+Чтобы прогнать те же браузерные сценарии именно в корневом контексте `/`,
+укажите `BFF_TEST_CONTEXT='' npm run test:e2e` (в Bash). Без этой переменной
+тесты сохраняют дополнительное покрытие альтернативного `/scooter-bff`.

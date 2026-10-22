@@ -9,7 +9,7 @@ let server, browser, context, page, base, fixture, errors, resourceFailures;
 before(async () => {
   const cp = ['target/test-classes','target/classes',fs.readFileSync('target/test-classpath.txt','utf8').trim()].join(path.delimiter);
   const java = process.env.JAVA_HOME ? path.join(process.env.JAVA_HOME,'bin/java') : 'java';
-  server = spawn(java, ['--add-opens=java.base/java.io=ALL-UNNAMED','--add-opens=java.base/java.lang=ALL-UNNAMED','--add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED','-cp',cp,'bff.BrowserTestServer']);
+  server = spawn(java, ['--add-opens=java.base/java.io=ALL-UNNAMED','--add-opens=java.base/java.lang=ALL-UNNAMED','--add-opens=java.rmi/sun.rmi.transport=ALL-UNNAMED','-Dbff.test.context=' + (process.env.BFF_TEST_CONTEXT ?? '/scooter-bff'),'-cp',cp,'bff.BrowserTestServer']);
   const log = fs.createWriteStream('target/browser-server.log'); server.stderr.pipe(log);
   await new Promise((resolve,reject) => {
     const timer = setTimeout(() => reject(new Error('Browser WAR did not start; see target/browser-server.log')), 45000);

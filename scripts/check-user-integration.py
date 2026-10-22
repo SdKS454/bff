@@ -6,6 +6,7 @@ import http.cookiejar
 import json
 import unittest
 import urllib.error
+import urllib.parse
 import urllib.request
 import uuid
 
@@ -89,7 +90,7 @@ class UserIntegration(unittest.TestCase):
         self.assertEqual(204, self.call(USER_URL, '/api/users/validate', token=token)[0])
         status, headers, _ = self.call(BFF_URL, '/logout', 'POST')
         self.assertEqual(303, status)
-        self.assertEqual('/scooter-bff/login.jsp', headers['Location'])
+        self.assertEqual(urllib.parse.urlsplit(BFF_URL).path.rstrip('/') + '/login.jsp', headers['Location'])
         self.assertEqual(401, self.call(USER_URL, '/api/users/validate', token=token)[0])
 
 

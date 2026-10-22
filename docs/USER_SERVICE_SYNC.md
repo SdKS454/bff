@@ -47,8 +47,8 @@
 ## Адрес входа и пример регистрации
 
 При стандартном BFF Tomcat на порте 8080:
-`http://localhost:8080/scooter-bff/login.jsp`.
-Если изменён порт Connector, меняется порт URL. Контекст из WAR — `/scooter-bff`.
+`http://localhost:8080/login.jsp`.
+Для локального стенда согласован корневой контекст `/` и порт 8080; сборку scooter-bff.war разворачивают как ROOT.war либо задают `/` в IDE. При другом способе развёртывания адрес отличается; актуальная таблица — API_CONTRACTS.md.
 
 ```http
 POST /scooter-bff/api/auth/register
@@ -81,7 +81,7 @@ Bearer, logout и ошибки отзыва. `node --test src/test/js/*.test.cjs
 
 ```sh
 python3 scripts/check-user-integration.py \
-  --bff-url http://localhost:8080/scooter-bff \
+  --bff-url http://localhost:8080 \
   --user-url http://localhost:8081
 ```
 
