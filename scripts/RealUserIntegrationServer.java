@@ -25,7 +25,7 @@ public final class RealUserIntegrationServer {
         String userUrl = "http://127.0.0.1:" + user.getConnector().getLocalPort();
         System.setProperty("user.service.url", userUrl);
         Tomcat bff;
-        try { bff = start("/scooter-bff", Path.of(args[1])); }
+        try { bff = start(System.getProperty("bff.test.context", "/scooter-bff"), Path.of(args[1])); }
         catch (Exception e) { user.stop(); user.destroy(); throw e; }
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try { bff.stop(); bff.destroy(); }
@@ -34,7 +34,7 @@ public final class RealUserIntegrationServer {
             catch (Exception e) { System.err.println("User shutdown failed"); }
         }));
         System.out.println("USER_URL=" + userUrl);
-        System.out.println("BFF_URL=http://127.0.0.1:" + bff.getConnector().getLocalPort() + "/scooter-bff");
+        System.out.println("BFF_URL=http://127.0.0.1:" + bff.getConnector().getLocalPort() + System.getProperty("bff.test.context", "/scooter-bff"));
         System.out.flush();
         bff.getServer().await();
     }

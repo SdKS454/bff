@@ -37,9 +37,10 @@ export CATALINA_OPTS="${CATALINA_OPTS:-} -Duser.service.url=http://localhost:808
 
 Если сервисы развёрнуты не как ROOT.war, их base URL должен включать context path.
 Для ADMIN выбрана локальная настройка `http://localhost:8082/admin/users.html`.
-Команда Moderation должна отдавать панель именно по этому пути либо сообщить
-другой URL. Переопределение: `MODERATION_PANEL_URL` или JVM-свойство
-`-Dmoderation.panel.url=...` (приоритетнее). Панель не входит в этот репозиторий.
+Присланный Moderation проверен с BFF и User; для исправления проверки JWT
+и выхода подготовлен [патч и инструкция](integrations/moderation/README.md).
+До запуска сервис коллег нужно обновить этим патчем. Переопределение: `MODERATION_PANEL_URL` или JVM-свойство
+`-Dmoderation.panel.url=...` (приоритетнее). Панель запускается отдельным сервисом, в WAR BFF она не включается.
 JWT передаётся ей во фрагменте `#accessToken=...`; панель должна прочитать токен
 и сразу очистить фрагмент. Вне локального стенда использовать HTTPS.
 
