@@ -44,6 +44,11 @@ export CATALINA_OPTS="${CATALINA_OPTS:-} -Duser.service.url=http://localhost:808
 JWT передаётся ей во фрагменте `#accessToken=...`; панель должна прочитать токен
 и сразу очистить фрагмент. Вне локального стенда использовать HTTPS.
 
+Documents также получен и проверен с BFF/User/Moderation: [сверка и запуск](integrations/documents/README.md).
+Исправленные исходники, архивы и WAR доступны в [комплекте для скачивания](https://github.com/SdKS454/bff/tree/temp/documents-integration-2026-10-24/handoff).
+Для сервиса нужны собственная БД, публичный ключ User и TTF-шрифт с кириллицей.
+Реальный Ride ещё должен подтвердить API получения данных для чека.
+
 ## Что подключено
 
 - Регистрация и автоматический вход отдельным запросом после её успеха.
