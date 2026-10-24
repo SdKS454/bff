@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Уведомление о блокировке</title>
+    <style th:utext="${inlineCss}"></style>
+</head>
+<body>
+<h1>Уведомление о блокировке</h1>
+<p><b>Пользователь:</b> <span th:text="${doc.userFullName}"></span> (<span th:text="${doc.userLogin}"></span>)</p>
+<p><b>Причина:</b> <span th:text="${doc.reason}"></span></p>
+<p><b>Заблокирован:</b> <span th:text="${doc.blockedAt}"></span></p>
+<p><b>До:</b> <span th:text="${doc.blockedUntil != null ? doc.blockedUntil : 'бессрочно'}"></span></p>
+</body>
+</html>
