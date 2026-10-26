@@ -41,6 +41,8 @@ public class RideServiceRestImpl implements RideService {
         return send("GET", URI.create(BASE + "/api/rides?userId=" + userId), jwt, null);
     }
 
+    public JsonResponse rates(String jwt) { return send("GET",URI.create(BASE+"/api/rates"),jwt,null); }
+
     private String toJson(StartRideRequest request) {
         return "{\"numberPlate\":" + JsonText.quote(request.numberPlate())
                 + ",\"rateId\":" + JsonText.quote(request.rateId())

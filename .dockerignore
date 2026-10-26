@@ -1,0 +1,13 @@
+.git
+**/target
+node_modules
+handoff
+*.zip
+*.war
+.env
+.env.*
+!*.example
+
+**/.env
+**/.env.*
+!**/.env.example

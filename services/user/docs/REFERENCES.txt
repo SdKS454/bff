@@ -1,0 +1,13 @@
+Входные материалы: bff-main.zip, Вставленный текст(8).txt,
+image(20261018-155840).png, image(20261018-155844).png.
+Они прочитаны локально и не включены повторно в новый проект.
+
+Документация платформы и библиотек:
+https://tomcat.apache.org/tomcat-10.1-doc/
+https://github.com/jwtk/jjwt
+https://jdbc.postgresql.org/documentation/
+https://github.com/FasterXML/jackson-databind
+https://www.mindrot.org/projects/jBCrypt/
+
+Дополнительная среда проверки, не зависимость проекта:
+https://pglite.dev/docs/pglite-socket

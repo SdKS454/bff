@@ -32,3 +32,14 @@ replay_pid*
 /node_modules/
 /test-results/
 /playwright-report/
+
+# Local stack configuration and generated distribution
+/.env
+/.env.*
+/dist/
+/services/**/target/
+/services/**/.idea/
+
+/services/**/.env
+/services/**/.env.*
+!/services/**/.env.example

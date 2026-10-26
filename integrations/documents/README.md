@@ -1,5 +1,9 @@
 # Синхронизация Documents, BFF, User и Moderation
 
+> Обновление 26 октября: полный актуальный стенд и исходники всех сервисов —
+> `services/` и [инструкция запуска](../../local-stack/README.md).
+> Ниже сохранена предыдущая сверка; сведения о фикстурах относятся к её дате.
+
 Источник: `Documents_for_integration.zip`, получен 24 октября 2026.
 README прочитан целиком, исходная версия сохранена в README_UPSTREAM.md.
 Исправленный проект доступен в [временной ветке](https://github.com/SdKS454/bff/tree/temp/documents-integration-2026-10-24/handoff/documents), переносимый diff —

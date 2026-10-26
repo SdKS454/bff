@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Чек об оплате поездки</title>
+    <style th:utext="${inlineCss}"></style>
+</head>
+<body>
+<h1>Чек об оплате поездки</h1>
+<p th:if="${doc.paymentMode == 'EDUCATIONAL'}">Учебная оплата. Реальные деньги не списывались.</p>
+<p><b>Пользователь:</b> <span th:text="${doc.userFullName}"></span> (<span th:text="${doc.userLogin}"></span>)</p>
+<p><b>ID поездки:</b> <span th:text="${doc.rideId}"></span></p>
+<p><b>Самокат:</b> <span th:text="${doc.numberPlate}"></span></p>
+<table>
+    <tr><th>Начало</th><td th:text="${doc.startedAt}"></td></tr>
+    <tr><th>Окончание</th><td th:text="${doc.finishedAt}"></td></tr>
+    <tr><th>Сумма</th><td><span th:text="${doc.amount}"></span> <span th:text="${doc.currency}"></span></td></tr>
+    <tr><th>Оплачено</th><td th:text="${doc.paidAt}"></td></tr>
+</table>
+<p class="footer">Документ сгенерирован автоматически сервисом KickSharing.</p>
+</body>
+</html>

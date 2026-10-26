@@ -1,2 +1,7 @@
 # Unified diffs use a single space for empty context lines.
 integrations/*/*.patch -whitespace
+
+# Shell entrypoints must also work after a Windows checkout.
+*.sh text eol=lf
+*.yaml text eol=lf
+Dockerfile text eol=lf

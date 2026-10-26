@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админка блокировок</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="topbar">
+    <h1 class="topbar__title">Админка блокировок</h1>
+    <button type="button" id="logout-btn" class="btn btn--ghost">Выйти</button>
+</header>
+<main class="page">
+    <div id="message" class="message" role="alert" hidden></div>
+    <section id="content" hidden>
+        <div class="toolbar">
+            <div class="filters" role="group" aria-label="Фильтр пользователей">
+                <button type="button" class="btn btn--filter is-active" data-filter="all">Все</button>
+                <button type="button" class="btn btn--filter" data-filter="active">Активные</button>
+                <button type="button" class="btn btn--filter" data-filter="blocked">Заблокированные</button>
+            </div>
+            <button type="button" id="refresh-btn" class="btn btn--ghost">Обновить</button>
+        </div>
+        <div class="table-wrap">
+            <table class="users-table">
+                <thead>
+                <tr>
+                    <th>Логин</th>
+                    <th>Имя</th>
+                    <th>Статус</th>
+                    <th>Причина</th>
+                    <th>Заблокирован с</th>
+                    <th>До</th>
+                    <th>Действие</th>
+                </tr>
+                </thead>
+                <tbody id="users-tbody">
+                <tr class="table-state"><td colspan="7">Загрузка…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+<div id="ban-modal" class="modal" hidden>
+    <div class="modal__overlay" data-close="true"></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true">
+        <h2 class="modal__title">Блокировка пользователя</h2>
+        <p class="modal__user" id="ban-modal-user"></p>
+        <label class="field">
+            <span class="field__label">Причина блокировки</span>
+            <select id="ban-reason" class="field__control">
+                <option value="" selected disabled>Выберите причину</option>
+            </select>
+        </label>
+        <p class="modal__duration" id="ban-duration"></p>
+        <div id="ban-error" class="message message--inline message--error" hidden></div>
+        <div class="modal__actions">
+            <button type="button" id="ban-cancel" class="btn btn--ghost">Отмена</button>
+            <button type="button" id="ban-confirm" class="btn btn--danger" disabled>Заблокировать</button>
+        </div>
+    </div>
+</div>
+<div id="unban-modal" class="modal" hidden>
+    <div class="modal__overlay" data-close="true"></div>
+    <div class="modal__dialog" role="dialog" aria-modal="true">
+        <h2 class="modal__title">Разблокировка</h2>
+        <p class="modal__user" id="unban-modal-text"></p>
+        <div id="unban-error" class="message message--inline message--error" hidden></div>
+        <div class="modal__actions">
+            <button type="button" id="unban-cancel" class="btn btn--ghost">Отмена</button>
+            <button type="button" id="unban-confirm" class="btn btn--primary">Да</button>
+        </div>
+    </div>
+</div>
+<script src="js/config.js"></script>
+<script src="js/users.js"></script>
+</body>
+</html>

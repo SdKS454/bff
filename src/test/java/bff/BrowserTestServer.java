@@ -72,6 +72,7 @@ public final class BrowserTestServer {
         } else if (path.equals("/api/users/logout")) { code = status("logoutStatus", 204); if (code == 204) revoked = true; }
         else if (path.equals("/api/users/me")) { code = status("profileStatus", 200); result = user(); }
         else if (path.endsWith("/blocked")) result = "{\"blocked\":" + fixture.getBoolean("blocked", false) + "}";
+        else if (path.equals("/api/rates")) { code = status("ratesStatus",200); result="[{\"id\":\"6ba7b810-9dad-11d1-80b4-00c04fd430c8\",\"default\":true,\"name\":\"Учебный\",\"unlockFee\":50,\"pricePerMinute\":8,\"currency\":\"RUB\",\"paymentMode\":\"EDUCATIONAL\"}]"; }
         else if (path.startsWith("/api/scooters")) {
             code = status("catalogStatus", 200);
             result = path.equals("/api/scooters") || path.endsWith("/nearest") ? "[" + scooter() + "]" : scooter();

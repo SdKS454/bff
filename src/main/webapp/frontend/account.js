@@ -87,7 +87,7 @@
   }
   async function entry() { try { state.pendingStart = null; await refresh(); state.user ? account() : auth(); } catch (error) { handleError(error); } }
   function coordinatesFields() { return '<label>Координата X<input name="posX" type="number" step="any" required></label><label>Координата Y<input name="posY" type="number" step="any" required></label><button data-geolocate type="button">Заполнить по геолокации</button><p class="account-subtitle">Для географических координат: X — долгота, Y — широта. Система координат должна совпадать с данными сервисов.</p>'; }
-  function confirmStart(plate) {
+  async function confirmStart(plate) {
     state.pendingStart = plate;
     if (!state.user) { auth(); return; }
     if (state.user.blocked) { account(); page.notify('Пользователь заблокирован. Начать поездку нельзя.'); return; }
@@ -95,7 +95,17 @@
     if (!scooter || scooter.status !== 'READY') { page.notify('Самокат сейчас недоступен. Обновите каталог.'); return; }
     if (state.ridesError) { account('rides'); return; }
     if (state.rides.some(r => r.status === 'ACTIVE')) { account('rides'); page.notify('Сначала завершите текущую поездку.'); return; }
-    shell(`<button data-account-tab="rides" type="button">← Мои поездки</button><h2>Готов к движению?</h2>${page.plateHtml(plate)}<p class="booking-notice">Итоговую сумму и тариф определяет Ride Service. Запрос начнёт поездку.</p><form class="account-form" id="start-ride-form" data-plate="${esc(plate)}">${coordinatesFields()}<p class="form-error" role="alert" hidden></p><button class="account-submit" type="submit">Начать поездку</button></form>`, true);
+    let tariff='';
+    try {
+      const rates=await service.request('/api/rates');
+      if(!Array.isArray(rates))throw new Error('Некорректный список тарифов.');
+      const rate=rates.find(r=>r.default===true)||rates[0];
+      if(!rate || !Number.isFinite(Number(rate.unlockFee)) || !Number.isFinite(Number(rate.pricePerMinute)))throw new Error('Тариф недоступен.');
+      tariff=`${esc(page.money(rate.unlockFee,rate.currency))} за старт + ${esc(page.money(rate.pricePerMinute,rate.currency))} за каждую начатую минуту (минимум одна минута).`;
+      if(rate.paymentMode==='EDUCATIONAL')tariff+=' Учебный режим: реальные деньги не списываются.';
+    } catch(error) { page.notify(error.message); return; }
+    if(!state.user || state.pendingStart!==plate)return;
+    shell(`<button data-account-tab="rides" type="button">← Мои поездки</button><h2>Готов к движению?</h2>${page.plateHtml(plate)}<p class="booking-notice">${tariff} Запрос начнёт поездку.</p><form class="account-form" id="start-ride-form" data-plate="${esc(plate)}">${coordinatesFields()}<p class="form-error" role="alert" hidden></p><button class="account-submit" type="submit">Начать поездку</button></form>`, true);
   }
   function confirmFinish(id) {
     const ride = state.rides.find(r => r.id === id);
@@ -105,7 +115,7 @@
   function confirmPay(id) {
     const ride = state.rides.find(r => r.id === id);
     if (!ride || ride.status !== 'FINISHED') { account('rides'); return; }
-    shell(`<button data-account-tab="rides" type="button">← Мои поездки</button><h2>Оплата поездки</h2>${page.plateHtml(ride.numberPlate)}<div class="payment-total"><small>Сумма от Ride Service</small><strong>${esc(page.money(ride.amount, ride.currency))}</strong></div><p class="booking-notice">Запрос оплаты будет отправлен в Ride Service. Результат определяет сервис.</p><form class="account-form" id="pay-ride-form" data-ride-id="${esc(id)}"><p class="form-error" role="alert" hidden></p><button class="account-submit" type="submit">Оплатить поездку</button></form>`, true);
+    shell(`<button data-account-tab="rides" type="button">← Мои поездки</button><h2>Оплата поездки</h2>${page.plateHtml(ride.numberPlate)}<div class="payment-total"><small>Сумма от Ride Service</small><strong>${esc(page.money(ride.amount, ride.currency))}</strong></div><p class="booking-notice">${ride.paymentMode === 'EDUCATIONAL' ? 'Учебная оплата: реальные деньги не списываются.' : 'Запрос оплаты будет отправлен в Ride Service. Результат определяет сервис.'}</p><form class="account-form" id="pay-ride-form" data-ride-id="${esc(id)}"><p class="form-error" role="alert" hidden></p><button class="account-submit" type="submit">Оплатить поездку</button></form>`, true);
   }
   function nearestForm() {
     if (!state.user) { auth(); return; }

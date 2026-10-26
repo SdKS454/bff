@@ -83,6 +83,7 @@ class BffIT {
         else if (path.equals("/api/users/register")) { status = 201; result = profile; }
         else if (path.equals("/api/users/me")) result = profile;
         else if (path.equals("/api/users/exists")) result = "{\"exists\":true}";
+        else if (path.equals("/api/rates")) result="[{\"id\":\"6ba7b810-9dad-11d1-80b4-00c04fd430c8\",\"unlockFee\":50,\"pricePerMinute\":8,\"currency\":\"RUB\"}]";
         else if (path.endsWith("/blocked")) { status = blockedStatus; result = blockedBody; }
         else if (path.equals("/api/documents/generate") && documentStatus == 200) {
             e.getResponseHeaders().set("Content-Type", documentContentType);
@@ -274,6 +275,12 @@ class BffIT {
         assertEquals(404, request("GET", "/api/rides/arbitrary", null, "Bearer t").statusCode());
         assertEquals(404, request("PUT", "/api/rides/12/finish", "{}", "Bearer t").statusCode());
         assertEquals(404, request("POST", "/api/rides/not-uuid/pay", "{}", "Bearer t").statusCode());
+    }
+    @Test void ratesRequireAuthenticationAndForwardOriginalJwt() throws Exception {
+        assertEquals(401,request("GET","/api/rates",null,null).statusCode());
+        var result=request("GET","/api/rates",null,"Bearer t");
+        assertEquals(200,result.statusCode());assertTrue(result.body().contains("pricePerMinute"));
+        assertEquals("Bearer t",last("/api/rates").authorization());
     }
     @Test void documentIdentityComesFromProfileAndLegacyTypeIsMapped() throws Exception {
         var response = request("POST", "/api/documents/generate", "{\"userId\":\"" + OTHER + "\",\"docType\":\"RECEIPT\",\"sourceId\":\"" + RIDE + "\",\"status\":\"PAID\"}", "Bearer t");
