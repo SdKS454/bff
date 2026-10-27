@@ -204,6 +204,13 @@ nearest, права на position, finish/pay, PDF-чек/историю, сни
 - psql не найден — укажите -PsqlPath к bin/psql.exe установленного PostgreSQL.
 - Connection refused — проверьте службу PostgreSQL и его фактический порт.
 - Password authentication failed — нужен пароль PostgreSQL, а не аккаунта сайта.
+- Сообщение о старой версии при наличии PostgreSQL 16/17/18 — сравните реальное
+  подключение: в pgAdmin выполните `SELECT current_setting('server_version'), inet_server_addr(), inet_server_port();`.
+  Скрипт по умолчанию подключается к localhost:5432; другой экземпляр может работать
+  на другом порту или адресе. Передайте полученные значения, например
+  `-PgHost 127.0.0.1 -PgPort 5433`, если именно их показал запрос. Обновлённый скрипт
+  выводит фактические версию и адрес сервера. `psql --version` показывает версию
+  клиента и не определяет, к какому серверу выполнено подключение.
 - Address already in use — проверьте HTTP/JMX-порты и другие запущенные Tomcat.
 - 404 на /api/... — проверьте, что контекст приложения именно `/`.
 - Ошибка PDF — проверьте PDF_FONT_PATH и соответствие public.pem ключу User.

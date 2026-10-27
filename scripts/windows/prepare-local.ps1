@@ -65,8 +65,18 @@ $previousEncoding = $env:PGCLIENTENCODING
 $env:PGPASSWORD = $password
 $env:PGCLIENTENCODING = 'UTF8'
 try {
-    $version = Invoke-Psql 'postgres' 'SHOW server_version_num;' ''
-    if ([int]$version -lt 160000) { throw 'This setup requires PostgreSQL 16+.' }
+    $connectionJson = Invoke-Psql 'postgres' "SELECT json_build_object('version',current_setting('server_version'),'number',current_setting('server_version_num'),'address',inet_server_addr(),'port',inet_server_port());" ''
+    try {
+        $connection = $connectionJson | ConvertFrom-Json -ErrorAction Stop
+        $versionNumber = 0
+        if (![int]::TryParse([string]$connection.number, [ref]$versionNumber)) { throw 'Invalid version number' }
+    } catch {
+        throw 'Cannot read PostgreSQL server version from psql output. Check that -PsqlPath points to PostgreSQL psql.exe.'
+    }
+    Write-Host "Connected to PostgreSQL $($connection.version) at $($connection.address):$($connection.port) (requested ${PgHost}:${PgPort}; user $PgUser)."
+    if ($versionNumber -lt 160000) {
+        throw "Connected server is PostgreSQL $($connection.version) at $($connection.address):$($connection.port). This setup requires PostgreSQL 16+. If pgAdmin shows a newer version, compare its Connection host/port and pass those exact values with -PgHost and -PgPort. No project databases were changed."
+    }
     New-Item -ItemType Directory -Force -Path $output | Out-Null
     $secrets = Join-Path $output 'secrets'
     New-Item -ItemType Directory -Force -Path $secrets | Out-Null
