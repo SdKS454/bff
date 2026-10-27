@@ -48,6 +48,22 @@ jobs:
           & ./scripts/windows/prepare-local.ps1 @parameters
           if ($before -ne (Get-FileHash ./local-run/secrets/private.pem -Algorithm SHA256).Hash) { throw 'RSA key changed on repeat setup' }
           if (!(Test-Path ./local-run/bff.vmoptions.txt)) { throw 'Missing BFF VM options' }
+      - name: Verify native Linux preparation
+        run: |
+          python3 - <<'PY'
+          import importlib.util, os, sys
+          from pathlib import Path
+          from unittest.mock import patch
+          spec = importlib.util.spec_from_file_location('linux_setup', 'scripts/linux/prepare-local.py')
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          arguments = ['prepare-local.py', '--password-auth', '--pg-port', '54321', '--database-prefix', 'linux_ci_', '--font-path', os.environ['PDF_FONT_PATH']]
+          with patch.object(sys, 'argv', arguments), patch('getpass.getpass', return_value=os.environ['TEST_DB_PASSWORD']):
+              assert module.main() == 0
+              key = Path('local-run/secrets/private.pem').read_bytes()
+              assert module.main() == 0
+              assert Path('local-run/secrets/private.pem').read_bytes() == key
+          PY
       - name: Java regression suites
         run: |
           mvn -B clean verify dependency:build-classpath -Dmdep.outputFile=target/test-classpath.txt

@@ -13,6 +13,9 @@ GPS-соглашение для этой ветки описано в инстр
 
 **Без Docker на Windows:** [пошаговая инструкция и автоматическая подготовка БД/ключей/окружения](docs/WINDOWS_NO_DOCKER.md).
 
+**Без Docker на Ubuntu:** [инструкция](docs/UBUNTU_NO_DOCKER.md).
+Подготовка БД, ключей и файлов окружения: `bash scripts/linux/prepare-local.sh --pg-port 5432`.
+
 ```bash
 docker compose up --build -d
 docker compose ps

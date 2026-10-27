@@ -1,6 +1,7 @@
 .git
 **/target
 node_modules
+**/__pycache__
 local-run
 handoff
 *.zip
