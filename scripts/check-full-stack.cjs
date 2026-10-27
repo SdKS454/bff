@@ -94,18 +94,18 @@ function pdf(result,expected){assert.equal(result.status,200,JSON.stringify(resu
  const browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
  let userPage,adminPage;
  try {
-  const context=await browser.newContext({acceptDownloads:true,viewport:{width:1440,height:1000}});const page=await context.newPage();userPage=page;const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const context=await browser.newContext({acceptDownloads:true,viewport:{width:1440,height:1000},permissions:['geolocation'],geolocation:{longitude:35.125,latitude:45.25}});const page=await context.newPage();userPage=page;const errors=[];page.on('pageerror',e=>errors.push(e.message));
   const uiLogin='stack.ui.'+nonce;await page.goto(urls.bff+'/?auth=register');
   for(const [name,value]of Object.entries({login:uiLogin,password,confirm:password,fullName:'Иван Петров',birthDate:'2000-01-01'}))await page.locator('#auth-form [name="'+name+'"]').fill(value);
   const loginWait=page.waitForResponse(r=>r.url()===urls.bff+'/api/auth/login'&&r.request().method()==='POST');
   await page.locator('#auth-form [type="submit"]').click();const uiAuth=await (await loginWait).json();
   await page.locator('.profile-data').waitFor();await page.locator('.dialog-close').click();
   await page.locator('[data-scooter="'+plate+'"]').first().click();await page.locator('[data-start-ride]').click();
-  await page.locator('#start-ride-form').waitFor();assert.ok((await page.locator('.booking-notice').innerText()).includes('Учебный режим'));
-  async function fillCoords(selector){await page.locator(selector+' [name="posX"]').fill('35.125');await page.locator(selector+' [name="posY"]').fill('45.25');}
+  await page.locator('#start-ride-form').waitFor();assert.doesNotMatch(await page.locator('.booking-notice').innerText(),/Учебный режим/);
+  async function fillCoords(selector){assert.equal(await page.locator(selector+' [name="posX"],'+selector+' [name="posY"]').count(),0);}
   await fillCoords('#start-ride-form');await page.locator('#start-ride-form [type="submit"]').click();
   await page.locator('[data-finish-ride]').click();await fillCoords('#finish-ride-form');await page.locator('#finish-ride-form [type="submit"]').click();
-  await page.locator('[data-pay-ride]').click();assert.ok((await page.locator('.booking-notice').innerText()).includes('реальные деньги не списываются'));
+  await page.locator('[data-pay-ride]').click();assert.match(await page.locator('.booking-notice').innerText(),/Подтвердите оплату/);
   await page.locator('#pay-ride-form [type="submit"]').click();await page.locator('[data-receipt]').waitFor();
   await fs.mkdir(path.join(root,'target','full-stack-downloads'),{recursive:true});
   async function download(action,name,text){const pending=page.waitForEvent('download');await action();const d=await pending;const file=path.join(root,'target','full-stack-downloads',name);await d.saveAs(file);assert.ok(execFileSync('pdftotext',[file,'-']).toString().includes(text));}

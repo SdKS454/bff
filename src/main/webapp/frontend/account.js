@@ -6,12 +6,14 @@
   const esc = page.escapeHtml;
   let refreshVersion = 0;
   let documentsVersion = 0;
+  const finishPositions = new Map();
   function publish(catalogMessage = '') {
     page.setData({ user:state.user, rides:state.rides, favorites:state.favorites, fleet:state.fleet, catalogMessage });
     $('#account-label').textContent = state.user ? 'Личный кабинет' : 'Вход / Регистрация';
     $('#account-button').setAttribute('aria-label', state.user ? 'Открыть личный кабинет' : 'Вход и регистрация');
   }
   function clearSession(message = 'Войдите, чтобы увидеть доступные самокаты.') {
+    finishPositions.clear();
     Object.assign(state, { user:null, rides:[], fleet:[], favorites:[], ridesError:'', documents:[], documentsLoaded:false, documentsError:'', documentsMore:false });
     publish(message);
   }
@@ -31,14 +33,14 @@
     }
     if (version !== refreshVersion) return;
     if (!user || typeof user.id !== 'string') { clearSession('Некорректный профиль пользователя.'); throw new Error('Некорректный профиль пользователя.'); }
-    const results = await Promise.allSettled([service.request('/api/scooters'), service.request('/api/rides')]);
+    const results = await Promise.allSettled([loadNearbyScooters(), service.request('/api/rides')]);
     if (version !== refreshVersion) return;
     const unauthenticated = results.find(r => r.status === 'rejected' && r.reason.status === 401);
     if (unauthenticated) { clearSession(); throw unauthenticated.reason; }
-    if(state.user?.id!==user.id){state.documents=[];state.documentsLoaded=false;state.documentsError='';state.documentsMore=false;}
+    if(state.user?.id!==user.id){finishPositions.clear();state.documents=[];state.documentsLoaded=false;state.documentsError='';state.documentsMore=false;}
     state.user = user; state.favorites = service.favorites(user.id);
     const [fleet, rides] = results;
-    let message = '';
+    let message = fleet.status === 'fulfilled' ? 'Свободные самокаты рядом с вами, сначала ближайшие.' : '';
     const fleetValid = fleet.status === 'fulfilled' && Array.isArray(fleet.value) && fleet.value.every(s => s && typeof s.numberPlate === 'string');
     state.fleet = fleetValid ? fleet.value : [];
     if (fleet.status === 'rejected') message = fleet.reason.message;
@@ -66,7 +68,7 @@
   }
   function rideHtml(ride) {
     const active = ride.status === 'ACTIVE', s = state.fleet.find(s => s.numberPlate === ride.numberPlate);
-    return `<article class="ride-item"><div class="ride-top">${page.plateHtml(ride.numberPlate)}<span class="ride-status ${active ? 'active' : ride.status === 'PAID' ? 'paid' : 'finished'}">${esc(page.rideStatuses[ride.status] || ride.status)}</span></div>${active && Number.isFinite(ride.lastPosX) && Number.isFinite(ride.lastPosY)?`<p class="ride-date">Последняя позиция: X=${esc(page.coordinate(ride.lastPosX))}, Y=${esc(page.coordinate(ride.lastPosY))} ед. сетки</p>`:''}<p class="ride-date">${esc(page.dateLabel(ride.startedAt))}${ride.finishedAt ? ' → ' + esc(page.dateLabel(ride.finishedAt)) : ''}</p><div class="ride-metrics"><div><small>Время</small><b ${active ? `data-elapsed="${esc(ride.startedAt)}"` : ''}>${elapsed(ride)}</b></div><div><small>Заряд самоката</small><b>${page.chargeLabel(s)}</b></div><div><small>${active ? 'Сумма от сервиса' : 'Итоговая сумма'}</small><b>${esc(page.money(ride.amount, ride.currency))}</b></div></div>${active ? `<button class="ride-button" data-position-ride="${esc(ride.id)}" type="button">Обновить позицию на сетке</button><button class="ride-button" data-finish-ride="${esc(ride.id)}" type="button">Завершить поездку →</button>` : ride.status === 'FINISHED' ? `<button class="ride-button" data-pay-ride="${esc(ride.id)}" type="button">Оплатить →</button>` : ride.status === 'PAID' ? `<span class="payment-complete">✓ ${ride.paymentMode==='EDUCATIONAL'?'Учебная оплата подтверждена':'Оплата подтверждена'}</span><button class="ride-button" data-receipt="${esc(ride.id)}" type="button">Скачать чек PDF ↓</button>` : ''}</article>`;
+    return `<article class="ride-item"><div class="ride-top">${page.plateHtml(ride.numberPlate)}<span class="ride-status ${active ? 'active' : ride.status === 'PAID' ? 'paid' : 'finished'}">${esc(page.rideStatuses[ride.status] || ride.status)}</span></div>${active && Number.isFinite(ride.lastPosX) && Number.isFinite(ride.lastPosY)?`<p class="ride-date">Последняя позиция: долгота ${esc(page.coordinate(ride.lastPosX))}, широта ${esc(page.coordinate(ride.lastPosY))}</p>`:''}<p class="ride-date">${esc(page.dateLabel(ride.startedAt))}${ride.finishedAt ? ' → ' + esc(page.dateLabel(ride.finishedAt)) : ''}</p><div class="ride-metrics"><div><small>Время</small><b ${active ? `data-elapsed="${esc(ride.startedAt)}"` : ''}>${elapsed(ride)}</b></div><div><small>Заряд самоката</small><b>${page.chargeLabel(s)}</b></div><div><small>${active ? 'Сумма от сервиса' : 'Итоговая сумма'}</small><b>${esc(page.money(ride.amount, ride.currency))}</b></div></div>${active ? `<button class="ride-button" data-position-ride="${esc(ride.id)}" type="button">Обновить местоположение</button><button class="ride-button" data-finish-ride="${esc(ride.id)}" type="button">Завершить поездку →</button>` : ride.status === 'FINISHED' ? `<button class="ride-button" data-pay-ride="${esc(ride.id)}" type="button">Оплатить →</button>` : ride.status === 'PAID' ? `<span class="payment-complete">✓ Оплата подтверждена</span><button class="ride-button" data-receipt="${esc(ride.id)}" type="button">Скачать чек PDF ↓</button>` : ''}</article>`;
   }
   function account(tab = 'profile') {
     if (!state.user) { auth(); return; }
@@ -108,7 +110,7 @@
 
   }
   async function entry() { try { state.pendingStart = null; await refresh(); state.user ? account() : auth(); } catch (error) { handleError(error); } }
-  function coordinatesFields() { return '<label>Координата X<input name="posX" type="number" step="any" min="-1000000" max="1000000" required></label><label>Координата Y<input name="posY" type="number" step="any" min="-1000000" max="1000000" required></label><p class="account-subtitle">Учебная координатная сетка. Введите X/Y в единицах сетки, например 10 и 15. Диапазон каждой координаты: от −1 000 000 до 1 000 000. Это не GPS и не метры.</p>'; }
+  function coordinatesFields() { return '<p class="account-subtitle">Местоположение определится автоматически. Разрешите браузеру доступ к геолокации.</p>'; }
 
   async function confirmStart(plate) {
     state.pendingStart = plate;
@@ -126,7 +128,7 @@
       const rate=rates.find(r=>r.default===true)||rates[0];
       if(!rate || !Number.isFinite(Number(rate.unlockFee)) || !Number.isFinite(Number(rate.pricePerMinute)))throw new Error('Тариф недоступен.');
       tariff=`${esc(page.money(rate.unlockFee,rate.currency))} за старт + ${esc(page.money(rate.pricePerMinute,rate.currency))} за каждую начатую минуту (минимум одна минута).`;
-      if(rate.paymentMode==='EDUCATIONAL')tariff+=' Учебный режим: реальные деньги не списываются.';
+
     } catch(error) { page.notify(error.message); return; }
     if(!state.user || state.pendingStart!==plate || !dialog.open || (origin && !origin.isConnected))return;
     shell(`<button data-account-tab="rides" type="button">← Мои поездки</button><h2>Готов к движению?</h2>${page.plateHtml(plate)}<p class="booking-notice">${tariff} Запрос начнёт поездку.</p><form class="account-form" id="start-ride-form" data-plate="${esc(plate)}">${coordinatesFields()}<p class="form-error" role="alert" hidden></p><button class="account-submit" type="submit">Начать поездку</button></form>`, true);
@@ -134,21 +136,57 @@
   function confirmFinish(id) {
     const ride = state.rides.find(r => r.id === id);
     if (!ride || ride.status !== 'ACTIVE') { account('rides'); return; }
-    shell(`<button data-account-tab="rides" type="button">← Мои поездки</button><h2>Завершить поездку</h2>${page.plateHtml(ride.numberPlate)}<p class="account-subtitle">Укажи координаты завершения. После подтверждения будет рассчитана итоговая сумма.</p><form class="account-form" id="finish-ride-form" data-ride-id="${esc(id)}">${coordinatesFields()}<p class="form-error" role="alert" hidden></p><button class="account-submit" type="submit">Завершить маршрут</button></form>`, true);
+    shell(`<button data-account-tab="rides" type="button">← Мои поездки</button><h2>Завершить поездку</h2>${page.plateHtml(ride.numberPlate)}<p class="account-subtitle">После подтверждения определим ваше местоположение и рассчитаем итоговую сумму.</p><form class="account-form" id="finish-ride-form" data-ride-id="${esc(id)}">${coordinatesFields()}<p class="form-error" role="alert" hidden></p><button class="account-submit" type="submit">Завершить маршрут</button></form>`, true);
   }
   function confirmPay(id) {
     const ride = state.rides.find(r => r.id === id);
     if (!ride || ride.status !== 'FINISHED') { account('rides'); return; }
-    shell(`<button data-account-tab="rides" type="button">← Мои поездки</button><h2>Оплата поездки</h2>${page.plateHtml(ride.numberPlate)}<div class="payment-total"><small>Итоговая стоимость</small><strong>${esc(page.money(ride.amount, ride.currency))}</strong></div><p class="booking-notice">${ride.paymentMode === 'EDUCATIONAL' ? 'Учебная оплата: реальные деньги не списываются.' : 'Подтвердите оплату поездки. Статус обновится после успешной операции.'}</p><form class="account-form" id="pay-ride-form" data-ride-id="${esc(id)}"><p class="form-error" role="alert" hidden></p><button class="account-submit" type="submit">Оплатить поездку</button></form>`, true);
+    shell(`<button data-account-tab="rides" type="button">← Мои поездки</button><h2>Оплата поездки</h2>${page.plateHtml(ride.numberPlate)}<div class="payment-total"><small>Итоговая стоимость</small><strong>${esc(page.money(ride.amount, ride.currency))}</strong></div><p class="booking-notice">Подтвердите оплату поездки. Статус обновится после успешной операции.</p><form class="account-form" id="pay-ride-form" data-ride-id="${esc(id)}"><p class="form-error" role="alert" hidden></p><button class="account-submit" type="submit">Оплатить поездку</button></form>`, true);
   }
   function nearestForm() {
     if (!state.user) { auth(); return; }
     shell(`<h2>Самокаты рядом</h2><form class="account-form" id="nearest-form">${coordinatesFields()}<p class="form-error" role="alert" hidden></p><button class="account-submit" type="submit">Найти самокаты</button></form>`, true);
   }
-  function coords(values) {
-    const x = values.posX, y = values.posY;
-    if (typeof x !== 'string' || typeof y !== 'string' || !x.trim() || !y.trim() || !Number.isFinite(Number(x)) || !Number.isFinite(Number(y))) throw new Error('Укажите числовые координаты X и Y.');
-    return {posX:Number(x), posY:Number(y)};
+  function coords(form) {
+    const owner = state.user?.id;
+    return new Promise((resolve, reject) => {
+      if (!window.isSecureContext || !navigator.geolocation) {
+        reject(new Error('Геолокация недоступна. Откройте сайт через localhost или HTTPS.'));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(position => {
+        if (form && (!dialog.open || !form.isConnected || owner !== state.user?.id)) {
+          reject(new Error('Действие отменено.'));
+          return;
+        }
+        const {longitude, latitude} = position.coords;
+        if (!Number.isFinite(longitude) || !Number.isFinite(latitude)
+            || Math.abs(longitude) > 180 || Math.abs(latitude) > 90) {
+          reject(new Error('Браузер вернул некорректное местоположение.'));
+          return;
+        }
+        resolve({posX: longitude, posY: latitude});
+      }, error => {
+        const messages = {
+          1: 'Разрешите доступ к местоположению в настройках сайта и повторите действие.',
+          2: 'Не удалось определить местоположение. Проверьте службу геолокации устройства.',
+          3: 'Истекло время определения местоположения. Повторите действие.'
+        };
+        reject(new Error(messages[error.code] || 'Не удалось определить местоположение.'));
+      }, {enableHighAccuracy: true, timeout: 15000, maximumAge: form ? 0 : 60000});
+    });
+  }
+  async function finishCoords(id, form) {
+    const ride = state.rides.find(item => item.id === id);
+    // A finish may already have been committed while its response was lost.
+    if (ride?.finishedAt && Number.isFinite(ride.endPosX) && Number.isFinite(ride.endPosY)) {
+      return {posX: ride.endPosX, posY: ride.endPosY};
+    }
+    if (!finishPositions.has(id)) finishPositions.set(id, await coords(form));
+    return finishPositions.get(id);
+  }
+  async function loadNearbyScooters() {
+    return service.request('/api/scooters/nearest', 'POST', await coords());
   }
   async function submit(form) {
     if (form.dataset.submitting === 'true' || !form.reportValidity()) return;
@@ -173,23 +211,25 @@
         state.pendingStart ? confirmStart(state.pendingStart) : account();
         page.notify(register ? 'Аккаунт создан' : 'Ты вошёл в аккаунт');
       } else if (form.id === 'start-ride-form') {
-        await service.request('/api/rides', 'POST', {numberPlate:form.dataset.plate, ...coords(values)});
+        await service.request('/api/rides', 'POST', {numberPlate:form.dataset.plate, ...(await coords(form))});
         committed = 'Поездка начата'; state.pendingStart = null;
         await refresh(); if(dialog.open&&form.isConnected)account('rides'); page.notify(committed);
       } else if (form.id === 'position-ride-form') {
-        await service.request('/api/rides/'+encodeURIComponent(form.dataset.rideId)+'/position','PUT',coords(values));
+        await service.request('/api/rides/'+encodeURIComponent(form.dataset.rideId)+'/position','PUT',await coords(form));
         committed='Позиция обновлена';await refresh();if(dialog.open&&form.isConnected)account('rides');page.notify(committed);
       } else if (form.id === 'finish-ride-form') {
-        await service.request('/api/rides/' + encodeURIComponent(form.dataset.rideId) + '/finish', 'PUT', coords(values));
+        await service.request('/api/rides/' + encodeURIComponent(form.dataset.rideId) + '/finish', 'PUT', await finishCoords(form.dataset.rideId, form));
+        finishPositions.delete(form.dataset.rideId);
         committed = 'Поездка завершена'; await refresh(); if(dialog.open&&form.isConnected)account('rides'); page.notify(committed);
       } else if (form.id === 'pay-ride-form') {
         await service.request('/api/rides/' + encodeURIComponent(form.dataset.rideId) + '/pay', 'POST', {});
         committed = 'Оплата подтверждена'; await refresh(); if(dialog.open&&form.isConnected)account('rides'); page.notify(committed);
       } else if (form.id === 'nearest-form') {
-        const scooters = await service.request('/api/scooters/nearest', 'POST', coords(values));
+        const scooters = await service.request('/api/scooters/nearest', 'POST', await coords(form));
+        if (!form.isConnected || !dialog.open) return;
         if (!Array.isArray(scooters)) throw new Error('Некорректный список ближайших самокатов.');
         state.fleet = scooters;
-        publish(scooters.length ? 'Результаты поиска по координатам. Расстояние — в единицах учебной сетки.' : 'Свободных самокатов рядом нет.');
+        publish(scooters.length ? 'Свободные самокаты рядом с вами, сначала ближайшие.' : 'Свободных самокатов рядом нет.');
         dialog.close(); document.getElementById('scooters').scrollIntoView();
       } else if (form.id === 'history-document-form') {
         if (values.from > values.to) throw new Error('Начало периода должно быть не позже конца.');
@@ -221,7 +261,7 @@
       else if (action.hasAttribute('data-pay-ride')) { await refresh(); if(dialog.open&&action.isConnected)confirmPay(action.dataset.payRide); }
       else if (action.hasAttribute('data-unsave')) { state.favorites = service.setFavorite(state.user?.id, action.dataset.unsave, false); publish(); account('saved'); }
       else if(action.hasAttribute('data-position-ride')) {
-        shell(`<h2>Позиция активной поездки</h2><form class="account-form" id="position-ride-form" data-ride-id="${esc(action.dataset.positionRide)}">${coordinatesFields()}<p class="form-error" role="alert" hidden></p><button class="account-submit" type="submit">Сохранить позицию</button></form>`,true);
+        shell(`<h2>Местоположение активной поездки</h2><form class="account-form" id="position-ride-form" data-ride-id="${esc(action.dataset.positionRide)}">${coordinatesFields()}<p class="form-error" role="alert" hidden></p><button class="account-submit" type="submit">Сохранить позицию</button></form>`,true);
       }
       else if(action.hasAttribute('data-documents-refresh'))await loadDocuments();
       else if(action.hasAttribute('data-documents-more'))await loadDocuments(true);

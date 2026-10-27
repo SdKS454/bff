@@ -7,12 +7,26 @@ import java.util.*;
 public class Scooters {
  static {try{Class.forName("org.postgresql.Driver");}catch(ClassNotFoundException e){throw new ExceptionInInitializerError(e);}}
  private Connection connect()throws SQLException{return DriverManager.getConnection(System.getenv("DB_URL"),System.getenv().getOrDefault("DB_USER",System.getenv("DB_USERNAME")),System.getenv("DB_PASSWORD"));}
+ private static boolean validGps(double longitude,double latitude) {
+  return Double.isFinite(longitude)&&Double.isFinite(latitude)&&Math.abs(longitude)<=180&&Math.abs(latitude)<=90;
+ }
+ private static double distanceMeters(double lon1,double lat1,double lon2,double lat2) {
+  double latDelta=Math.toRadians(lat2-lat1),lonDelta=Math.toRadians(lon2-lon1);
+  double a=Math.pow(Math.sin(latDelta/2),2)+Math.cos(Math.toRadians(lat1))*Math.cos(Math.toRadians(lat2))*Math.pow(Math.sin(lonDelta/2),2);
+  a=Math.max(0,Math.min(1,a));
+  return 6371008.8*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+ }
  private Scooter map(ResultSet r,Double x,Double y)throws SQLException{
   double px=r.getDouble("position_x"),py=r.getDouble("position_y");
-  if(x!=null && !Double.isFinite(Math.hypot(px-x,py-y)))throw new ApiException(400,"Слишком большие координаты");
-  return new Scooter(r.getString("numeric_plate"),r.getInt("charge"),r.getString("status"),px,py,x==null?null:Math.hypot(px-x,py-y));
+  Double distance=null;
+  if(x!=null) {
+   if(!validGps(px,py))throw new ApiException(503,"В базе есть самокат с некорректными GPS-координатами");
+   distance=distanceMeters(x,y,px,py);
+  }
+  return new Scooter(r.getString("numeric_plate"),r.getInt("charge"),r.getString("status"),px,py,distance);
  }
  public List<Scooter> list(String status,Double x,Double y){
+  if(x!=null&&(y==null||!validGps(x,y)))throw new ApiException(400,"Нужны GPS-координаты: posX - долгота от -180 до 180, posY - широта от -90 до 90");
   String sql="SELECT * FROM scooter WHERE NOT is_deleted"+(status==null?"":" AND status=?")+" ORDER BY numeric_plate";
   try(var c=connect();var q=c.prepareStatement(sql)){
    if(status!=null)q.setString(1,status);List<Scooter> result=new ArrayList<>();

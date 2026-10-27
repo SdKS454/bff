@@ -71,7 +71,7 @@ function pdf(r,text){assert.equal(r.status,200,JSON.stringify(r.data));const val
  console.log('PASS: owned position, grid updates, immutable PDF snapshots, history pagination, ownership, soft delete, stale generation and repeat migrations');
  const browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
  try {
-  const context=await browser.newContext({acceptDownloads:true,viewport:{width:1440,height:1000}});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const context=await browser.newContext({acceptDownloads:true,viewport:{width:1440,height:1000},permissions:['geolocation'],geolocation:{longitude:35.125,latitude:45.25}});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://localhost:8080/login.jsp');await page.locator('[name="login"]').fill(owner.login);await page.locator('[name="password"]').fill(password);await page.locator('#auth-form [type="submit"]').click();await page.locator('.profile-data').waitFor();
   await page.route(/\/api\/documents\?/,async route=>{await new Promise(r=>setTimeout(r,300));await route.continue();});
   const response=page.waitForResponse(r=>r.url().includes('/api/documents?'));
@@ -84,10 +84,10 @@ function pdf(r,text){assert.equal(r.status,200,JSON.stringify(r.data));const val
   const late=page.waitForResponse(r=>r.url().includes('/api/documents?'));await page.locator('[data-documents-refresh]').click();await page.locator('.dialog-close').click();await late;await page.waitForTimeout(100);assert.equal(await page.locator('#details').evaluate(d=>d.open),false,'Late history must not reopen a closed dialog');
   await page.unroute(/\/api\/documents\?/);
   await page.locator('[data-scooter="'+plate+'"]').first().click();await page.locator('[data-start-ride]').click();await page.locator('#start-ride-form').waitFor();assert.equal(await page.locator('[data-geolocate]').count(),0);
-  await page.locator('#start-ride-form [name="posX"]').fill('10');await page.locator('#start-ride-form [name="posY"]').fill('15');await page.locator('#start-ride-form [type="submit"]').click();
-  await page.locator('[data-position-ride]').click();await page.locator('#position-ride-form [name="posX"]').fill('17.125');await page.locator('#position-ride-form [name="posY"]').fill('19.5');await page.locator('#position-ride-form [type="submit"]').click();
+  assert.equal(await page.locator('#start-ride-form [name="posX"],#start-ride-form [name="posY"]').count(),0);await page.locator('#start-ride-form [type="submit"]').click();
+  await page.locator('[data-position-ride]').click();assert.equal(await page.locator('#position-ride-form [name="posX"],#position-ride-form [name="posY"]').count(),0);await page.locator('#position-ride-form [type="submit"]').click();
   await page.getByText(/Последняя позиция:/).waitFor();
-  await page.locator('[data-finish-ride]').click();await page.locator('#finish-ride-form [name="posX"]').fill('18');await page.locator('#finish-ride-form [name="posY"]').fill('20');await page.locator('#finish-ride-form [type="submit"]').click();
+  await page.locator('[data-finish-ride]').click();assert.equal(await page.locator('#finish-ride-form [name="posX"],#finish-ride-form [name="posY"]').count(),0);await page.locator('#finish-ride-form [type="submit"]').click();
   await page.locator('[data-pay-ride]').waitFor();assert.deepEqual(errors,[]);await page.screenshot({path:path.join(root,'target','submission-ui.png')});await context.close();
   console.log('PASS: browser document history/download/delete, cancellation, preserved date input, no late modal reopen, explicit grid and active position editing');
  }finally{await browser.close();}

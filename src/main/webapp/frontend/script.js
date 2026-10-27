@@ -51,8 +51,8 @@ function renderFleet() {
       ${plateHtml(s.numberPlate)}
       <div class="charge-heading"><span>Заряд аккумулятора</span><strong>${chargeLabel(s)}</strong></div>
       <div class="charge-bar"><span style="width:${chargeValue(s) ?? 0}%"></span></div>
-      <div class="product-location"><svg><use href="#pin"/></svg><div>Координаты самоката<small>X: ${coordinate(s.posX)}, Y: ${coordinate(s.posY)}</small></div></div>
-      ${finite(s.distance) ? `<div class="range-row"><span>Расстояние</span><strong>${coordinate(s.distance)} ед. сетки</strong></div>` : ''}
+      <div class="product-location"><svg><use href="#pin"/></svg><div>Местоположение самоката<small>Долгота: ${coordinate(s.posX)}, широта: ${coordinate(s.posY)}</small></div></div>
+      ${finite(s.distance) ? `<div class="range-row"><span>Расстояние</span><strong>${s.distance < 1000 ? Math.round(s.distance).toLocaleString('ru-RU') + ' м' : (s.distance/1000).toLocaleString('ru-RU', {maximumFractionDigits: 1}) + ' км'}</strong></div>` : ''}
       <button class="product-action" data-scooter="${escapeHtml(s.numberPlate)}" type="button"><span>Подробнее о самокате</span><b>→</b></button>
     </article>`).join('');
   document.getElementById('fleet-count').textContent = viewState.user ? `Свободно ${viewState.fleet.filter(s => s.status === 'READY').length} из ${viewState.fleet.length}` : 'Самокаты доступны после входа';
@@ -65,7 +65,7 @@ async function openScooter(numberPlate) {
   try {
     const s = await window.ScootxApi.request('/api/scooters/' + encodeURIComponent(numberPlate));
     if (!s || typeof s.numberPlate !== 'string') throw new Error('Некорректный ответ сервиса самокатов.');
-    openDialog(`<div class="dialog-product"><div class="product-picture crop" data-crop="${photoCrop.join(',')}"></div><section><h2>Самокат</h2>${plateHtml(s.numberPlate)}<div class="dialog-facts"><div><span>Состояние</span><b>${escapeHtml(scooterStatuses[s.status] || 'Недоступен')}</b></div><div><span>Заряд</span><b>${chargeLabel(s)}</b></div><div><span>Координаты</span><b>X: ${coordinate(s.posX)}, Y: ${coordinate(s.posY)}</b></div></div><p class="account-subtitle">Фотография иллюстративная.</p><button class="account-submit" data-start-ride="${escapeHtml(s.numberPlate)}" type="button" ${s.status === 'READY' ? '' : 'disabled'}><span>${s.status === 'READY' ? 'Начать поездку' : 'Сейчас недоступен'}</span><b>→</b></button></section></div>`);
+    openDialog(`<div class="dialog-product"><div class="product-picture crop" data-crop="${photoCrop.join(',')}"></div><section><h2>Самокат</h2>${plateHtml(s.numberPlate)}<div class="dialog-facts"><div><span>Состояние</span><b>${escapeHtml(scooterStatuses[s.status] || 'Недоступен')}</b></div><div><span>Заряд</span><b>${chargeLabel(s)}</b></div><div><span>Местоположение</span><b>Долгота: ${coordinate(s.posX)}, широта: ${coordinate(s.posY)}</b></div></div><p class="account-subtitle">Фотография иллюстративная.</p><button class="account-submit" data-start-ride="${escapeHtml(s.numberPlate)}" type="button" ${s.status === 'READY' ? '' : 'disabled'}><span>${s.status === 'READY' ? 'Начать поездку' : 'Сейчас недоступен'}</span><b>→</b></button></section></div>`);
   } catch (error) { window.ScootxAccount.handleError(error); }
 }
 document.addEventListener('click', async event => {

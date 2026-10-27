@@ -41,7 +41,7 @@ async function settings(value, patch = false) {
 async function calls() { return (await fetch(fixture + '/__calls')).json(); }
 beforeEach(async () => {
   await settings({});
-  context = await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true});
+  context = await browser.newContext({viewport:{width:1440,height:1000},acceptDownloads:true,permissions:['geolocation'],geolocation:{longitude:10.5,latitude:24.5}});
   page = await context.newPage(); errors = []; resourceFailures = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('response', response => { if (response.url().includes('/frontend/') && response.status() >= 400) resourceFailures.push(response.url()); });
@@ -61,21 +61,20 @@ async function login() {
   await page.locator('#auth-form [type="submit"]').click();
   await page.locator('.profile-data').waitFor();
 }
-async function fillCoords(form) {
-  await page.locator(form + ' [name="posX"]').fill('10.5');
-  await page.locator(form + ' [name="posY"]').fill('24.5');
+async function checkAutomaticCoordinates(form) {
+  assert.equal(await page.locator(form+' [name="posX"],'+form+' [name="posY"]').count(),0);
 }
 async function startRide() {
   await page.locator('.dialog-close').click();
   await page.locator('[data-scooter]').first().click();
   await page.locator('[data-start-ride]').click();
-  await fillCoords('#start-ride-form');
+  await checkAutomaticCoordinates('#start-ride-form');
   await page.locator('#start-ride-form [type="submit"]').click();
   await page.locator('[data-finish-ride]').waitFor();
 }
 async function finishRide() {
   await page.locator('[data-finish-ride]').click();
-  await fillCoords('#finish-ride-form');
+  await checkAutomaticCoordinates('#finish-ride-form');
   await page.locator('#finish-ride-form [type="submit"]').click();
   await page.locator('[data-pay-ride]').waitFor();
 }
@@ -183,15 +182,15 @@ test('favorites stay on device and never contain credentials', async () => {
   assert.equal(stored.length,1); assert.ok(stored[0][0].startsWith('scootx:favorites:')); assert.equal(stored[0][1],'["A123BC"]');
   await page.reload(); await page.waitForFunction(() => document.querySelector('[data-favorite]')?.getAttribute('aria-pressed') === 'true');
 });
-test('history PDF and nearest search use actual API paths with entered coordinates', async () => {
+test('history PDF and nearest search use actual API paths with automatic GPS', async () => {
   await login(); await page.locator('[data-account-tab="documents"]').click();
   await page.locator('[name="from"]').fill('2026-10-01'); await page.locator('[name="to"]').fill('2026-10-20');
   const downloaded = page.waitForEvent('download'); await page.locator('#history-document-form [type="submit"]').click();
   assert.equal((await downloaded).suggestedFilename(),'document.pdf');
   await page.locator('.dialog-close').click(); await page.locator('#nearest-fleet').click();
-  await fillCoords('#nearest-form'); await page.locator('#nearest-form [type="submit"]').click();
+  await checkAutomaticCoordinates('#nearest-form'); await page.locator('#nearest-form [type="submit"]').click();
   await page.waitForFunction(() => !document.querySelector('#details').open);
-  assert.match(await page.locator('#catalog-message').innerText(),/единицах учебной сетки/);
+  assert.match(await page.locator('#catalog-message').innerText(),/сначала ближайшие/);
   assert.ok((await calls()).some(c => c.method === 'POST' && c.path === '/api/scooters/nearest'));
 });
 test('registered account is not registered twice when subsequent login fails', async () => {
@@ -231,4 +230,37 @@ test('closing the account while navigation refreshes cancels the late navigation
   await page.locator('[data-account-tab="rides"]').click();await page.locator('.dialog-close').click();
   await (await loading).finished();await page.waitForTimeout(100);
   assert.equal(await page.locator('#details').evaluate(dialog=>dialog.open),false);
+});
+
+test('GPS automatically queries nearest with longitude X and latitude Y, no manual coordinate fields', async()=>{
+ await context.setGeolocation({longitude:37.618423,latitude:55.751244});
+ const positions=[];
+ await page.route('**/api/scooters/nearest',route=>{positions.push(route.request().postDataJSON());return route.continue();});
+ await login();assert.ok(positions.length>=1);assert.deepEqual(positions[0],{posX:37.618423,posY:55.751244});
+ assert.equal(await page.locator('[name="posX"],[name="posY"]').count(),0);
+ await startRide();assert.doesNotMatch(await page.locator('body').innerText(),/Учебный режим|Учебная оплата/);
+});
+test('denied geolocation shows actionable error and never requests nearest with invented coordinates',async()=>{
+ await context.addInitScript(()=>Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok,fail){fail({code:1});}}}));
+ await login();
+ assert.match(await page.locator('#catalog-message').innerText(),/Разрешите доступ/);
+ assert.equal((await calls()).filter(c=>c.path==='/api/scooters/nearest').length,0);
+ assert.equal(await page.locator('.product').count(),0);
+});
+test('late GPS cannot start a ride after its form is closed',async()=>{
+ await context.addInitScript(()=>Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok,fail,opts){setTimeout(()=>ok({coords:{longitude:37.6,latitude:55.7}}),opts.maximumAge===0?500:0);}}}));
+ await login();await page.locator('.dialog-close').click();await page.locator('[data-scooter]').first().click();await page.locator('[data-start-ride]').click();await page.locator('#start-ride-form').waitFor();
+ await page.locator('#start-ride-form [type="submit"]').click();await page.locator('.dialog-close').click();await page.waitForTimeout(700);
+ assert.equal((await calls()).filter(c=>c.path==='/api/rides'&&c.method==='POST').length,0);
+ assert.equal(await page.locator('#details').evaluate(d=>d.open),false);
+});
+test('finish retries preserve the first GPS position after a service error',async()=>{
+ await login();await startRide();await page.locator('[data-finish-ride]').click();await page.locator('#finish-ride-form').waitFor();
+ await settings({finishStatus:503},true);
+ const positions=[];
+ await page.route('**/api/rides/*/finish',route=>{positions.push(route.request().postDataJSON());return route.continue();});
+ await page.locator('#finish-ride-form [type="submit"]').click();await page.locator('#finish-ride-form .form-error:not([hidden])').waitFor();
+ await context.setGeolocation({longitude:37.6,latitude:55.7});await settings({finishStatus:200},true);
+ await page.locator('#finish-ride-form [type="submit"]').click();await page.locator('[data-pay-ride]').waitFor();
+ assert.equal(positions.length,2);assert.deepEqual(positions[0],positions[1]);
 });
