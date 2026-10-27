@@ -1,6 +1,7 @@
 .git
 **/target
 node_modules
+local-run
 handoff
 *.zip
 *.war

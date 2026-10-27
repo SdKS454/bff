@@ -3,6 +3,8 @@
 Полный согласованный локальный стенд: все исходники сервисов в `services/`,
 BFF и фронтенд — в корневом `src/`. Java 17 / Tomcat 10.1.
 
+**Без Docker на Windows:** [пошаговая инструкция и автоматическая подготовка БД/ключей/окружения](docs/WINDOWS_NO_DOCKER.md).
+
 ```bash
 docker compose up --build -d
 docker compose ps

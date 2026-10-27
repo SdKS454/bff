@@ -882,3 +882,5 @@ scripts/check-submission.cjs и scripts/check-stack-recovery.cjs только в
 Изменять уже применённый файл нельзя: для следующего изменения добавляется новый.
 Проверки сдаваемой версии: [SUBMISSION_REPORT.md](SUBMISSION_REPORT.md),
 ручной прогон: [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md).
+
+Альтернативный запуск полностью без Docker на Windows: [WINDOWS_NO_DOCKER.md](WINDOWS_NO_DOCKER.md). REST-адреса 8080–8085 и контекст / сохраняются; БД, ключи и окружение готовит отдельный PowerShell-скрипт.

@@ -35,9 +35,19 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: sudo apt-get update && sudo apt-get install -y poppler-utils fonts-dejavu-core
+      - run: sudo apt-get update && sudo apt-get install -y poppler-utils fonts-dejavu-core postgresql-client
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - name: Verify standalone database and environment preparation
+        shell: pwsh
+        run: |
+          $password = ConvertTo-SecureString $env:TEST_DB_PASSWORD -AsPlainText -Force
+          $parameters = @{ PgHost='127.0.0.1'; PgPort=54321; PgUser='postgres'; FontPath=$env:PDF_FONT_PATH; DatabasePassword=$password }
+          & ./scripts/windows/prepare-local.ps1 @parameters
+          $before = (Get-FileHash ./local-run/secrets/private.pem -Algorithm SHA256).Hash
+          & ./scripts/windows/prepare-local.ps1 @parameters
+          if ($before -ne (Get-FileHash ./local-run/secrets/private.pem -Algorithm SHA256).Hash) { throw 'RSA key changed on repeat setup' }
+          if (!(Test-Path ./local-run/bff.vmoptions.txt)) { throw 'Missing BFF VM options' }
       - name: Java regression suites
         run: |
           mvn -B clean verify dependency:build-classpath -Dmdep.outputFile=target/test-classpath.txt

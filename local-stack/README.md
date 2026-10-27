@@ -93,6 +93,12 @@ docker compose down
 
 ## Запуск без контейнеров приложений: IDE + отдельные Tomcat
 
+Для полностью нативного Windows-запуска, включая PostgreSQL без Docker:
+[WINDOWS_NO_DOCKER.md](../docs/WINDOWS_NO_DOCKER.md). Скрипт
+`powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows\prepare-local.ps1`
+создаёт отдельные БД kicksharing_*, ключи и готовые переменные в local-run/.
+Используется ваш PostgreSQL (обычно 5432), а не Docker-реквизиты 54320.
+
 Нужны Java 17+, Maven 3.9+, Tomcat 10.1+, PostgreSQL. Соберите каждый pom.xml
 в корне и `services/{user,moderation,scooter,ride,documents}`. Во всех шести Tomcat
 назначьте порт из таблицы и **Application context /**, либо разверните
