@@ -14,6 +14,7 @@ CREATE TABLE rides (
  payment_mode VARCHAR(16) NOT NULL CHECK(payment_mode IN('EDUCATIONAL','DISABLED')),
  started_at TIMESTAMPTZ NOT NULL,finished_at TIMESTAMPTZ,
  start_pos_x DOUBLE PRECISION,start_pos_y DOUBLE PRECISION,end_pos_x DOUBLE PRECISION,end_pos_y DOUBLE PRECISION,
+ last_pos_x DOUBLE PRECISION,last_pos_y DOUBLE PRECISION,last_position_at TIMESTAMPTZ,
  duration_seconds BIGINT CHECK(duration_seconds>=0),amount NUMERIC(14,2) CHECK(amount>=0),currency CHAR(3) NOT NULL,paid_at TIMESTAMPTZ,
  unlock_fee NUMERIC(14,2) NOT NULL CHECK(unlock_fee>=0),price_per_minute NUMERIC(14,2) NOT NULL CHECK(price_per_minute>=0),
  CHECK((status IN('STARTING','CANCELLING','ACTIVE') AND finished_at IS NULL AND amount IS NULL AND paid_at IS NULL)

@@ -92,8 +92,9 @@ function pdf(result,expected){assert.equal(result.status,200,JSON.stringify(resu
  console.log('PASS: outage and restart recovery preserves scooter ownership, fare, paid history and JWTs; finish works while Moderation is down');
 
  const browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+ let userPage,adminPage;
  try {
-  const context=await browser.newContext({acceptDownloads:true,viewport:{width:1440,height:1000}});const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const context=await browser.newContext({acceptDownloads:true,viewport:{width:1440,height:1000}});const page=await context.newPage();userPage=page;const errors=[];page.on('pageerror',e=>errors.push(e.message));
   const uiLogin='stack.ui.'+nonce;await page.goto(urls.bff+'/?auth=register');
   for(const [name,value]of Object.entries({login:uiLogin,password,confirm:password,fullName:'Иван Петров',birthDate:'2000-01-01'}))await page.locator('#auth-form [name="'+name+'"]').fill(value);
   const loginWait=page.waitForResponse(r=>r.url()===urls.bff+'/api/auth/login'&&r.request().method()==='POST');
@@ -112,7 +113,7 @@ function pdf(result,expected){assert.equal(result.status,200,JSON.stringify(resu
   await page.locator('[data-account-tab="documents"]').click();
   const today=new Date().toISOString().slice(0,10);await page.locator('[name="from"]').fill(today);await page.locator('[name="to"]').fill(today);
   await download(()=>page.locator('#history-document-form [type="submit"]').click(),'history.pdf','История поездок');
-  const adminContext=await browser.newContext();const panel=await adminContext.newPage();
+  const adminContext=await browser.newContext();const panel=await adminContext.newPage();adminPage=panel;
   await panel.goto(urls.bff+'/login.jsp');await panel.locator('[name="login"]').fill(admin.login);await panel.locator('[name="password"]').fill(password);await panel.locator('#auth-form [type="submit"]').click();
   await panel.waitForURL(urls.mod+'/admin/users.html');assert.equal(await panel.evaluate(()=>location.hash),'');
   const row=panel.locator('#users-tbody tr').filter({hasText:uiLogin});await row.getByRole('button',{name:'Заблокировать',exact:true}).click();
@@ -122,6 +123,12 @@ function pdf(result,expected){assert.equal(result.status,200,JSON.stringify(resu
   for(const [service,route,method,body]of [['user','/api/users/validate','GET'],['mod','/api/moderation/users/'+uiAuth.user.id+'/status','GET'],['scooter','/api/scooters','GET'],['ride','/api/rides','GET'],['docs','/api/documents/generate','POST',{userId:uiAuth.user.id,docType:'USER_BLOCKED'}],['bff','/api/users/me','GET']])assert.equal((await api(service,route,uiAuth.accessToken,method,body)).status,401,service+' must reject revoked JWT');
   assert.deepEqual(errors,[]);await context.close();await adminContext.close();
   console.log('PASS: real browser registration → fleet → start → finish → educational pay → three Russian PDFs, ADMIN panel/CORS and revocation across all six apps');
+ } catch(error) {
+  await fs.mkdir(path.join(root,'target','full-stack-downloads'),{recursive:true});
+  for(const [name,tab]of [['user',userPage],['admin',adminPage]])if(tab&&!tab.isClosed()){
+   try{await tab.screenshot({path:path.join(root,'target','full-stack-downloads',name+'-failure.png')});console.error(name+' page diagnostics: '+(await tab.locator('body').innerText()).slice(-4000));}catch{}
+  }
+  throw error;
  } finally {await browser.close();}
  const pending=sql('documents',"SELECT count(*) FROM documents WHERE status='PENDING'");assert.equal(pending,'0');
  console.log('PASS: FULL STACK, all five microservices and BFF real, no HTTP fixtures');

@@ -21,6 +21,17 @@ services:
       interval: 2s
       timeout: 3s
       retries: 40
+  migrate:
+    image: postgres:16
+    depends_on:
+      postgres: {condition: service_healthy}
+    environment:
+      PGHOST: postgres
+      PGUSER: kicksharing
+      PGPASSWORD: ${LOCAL_DB_PASSWORD:-kicksharing-local-only}
+    volumes:
+      - ./local-stack/migrations:/migrations:ro
+    entrypoint: ["sh", "/migrations/run.sh"]
   keys:
     image: kicksharing-stack:local
     build:
@@ -39,6 +50,7 @@ services:
     restart: unless-stopped
     ports: ["127.0.0.1:8081:8080"]
     depends_on:
+      migrate: {condition: service_completed_successfully}
       postgres: {condition: service_healthy}
       keys: {condition: service_completed_successfully}
     environment:
@@ -70,6 +82,7 @@ services:
     restart: unless-stopped
     ports: ["127.0.0.1:8082:8080"]
     depends_on:
+      migrate: {condition: service_completed_successfully}
       postgres: {condition: service_healthy}
       keys: {condition: service_completed_successfully}
       user: {condition: service_healthy}
@@ -100,6 +113,7 @@ services:
     restart: unless-stopped
     ports: ["127.0.0.1:8083:8080"]
     depends_on:
+      migrate: {condition: service_completed_successfully}
       postgres: {condition: service_healthy}
       keys: {condition: service_completed_successfully}
       user: {condition: service_healthy}
@@ -130,6 +144,7 @@ services:
     restart: unless-stopped
     ports: ["127.0.0.1:8084:8080"]
     depends_on:
+      migrate: {condition: service_completed_successfully}
       postgres: {condition: service_healthy}
       keys: {condition: service_completed_successfully}
       user: {condition: service_healthy}
@@ -163,6 +178,7 @@ services:
     restart: unless-stopped
     ports: ["127.0.0.1:8085:8080"]
     depends_on:
+      migrate: {condition: service_completed_successfully}
       postgres: {condition: service_healthy}
       keys: {condition: service_completed_successfully}
       user: {condition: service_healthy}
@@ -197,6 +213,7 @@ services:
     restart: unless-stopped
     ports: ["127.0.0.1:8080:8080"]
     depends_on:
+      migrate: {condition: service_completed_successfully}
       user: {condition: service_healthy}
       moderation: {condition: service_healthy}
       scooter: {condition: service_healthy}

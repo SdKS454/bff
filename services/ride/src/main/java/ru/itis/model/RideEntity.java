@@ -25,6 +25,10 @@ public class RideEntity {
     private Double startPosY;
     private Double endPosX;
     private Double endPosY;
+    private Double lastPosX;
+    private Double lastPosY;
+    @JsonSerialize(using=ToStringSerializer.class)
+    private Instant lastPositionAt;
     private Long durationSeconds;
     private BigDecimal amount;
     private String currency;

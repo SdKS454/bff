@@ -49,8 +49,8 @@ public final class JsonText {
             if (required) throw new IllegalArgumentException("Нужны posX и posY");
             return null;
         }
-        if (!(value instanceof JsonNumber number) || !Double.isFinite(number.doubleValue()))
-            throw new IllegalArgumentException("Поле " + field + " должно быть конечным числом");
+        if (!(value instanceof JsonNumber number) || !Double.isFinite(number.doubleValue()) || Math.abs(number.doubleValue())>1_000_000)
+            throw new IllegalArgumentException("Поле " + field + " должно быть числом в диапазоне от -1000000 до 1000000");
         return number.bigDecimalValue().toString();
     }
     public static Long longOrNull(String json, String field) {

@@ -33,6 +33,7 @@ public class RideIntegrationService {
  }
  public void processPayment(RideEntity ride){if(!paymentMode().equals("EDUCATIONAL"))throw new ApiException(503,"Платёжный провайдер не настроен");}
  public void reserve(RideEntity ride){call(ride,"reserve",Map.of("rideId",ride.getId().toString(),"userId",ride.getUserId().toString()));}
+ public void position(RideEntity ride,double x,double y){call(ride,"position",Map.of("rideId",ride.getId().toString(),"posX",x,"posY",y));}
  public void release(RideEntity ride,boolean finished){
   Map<String,Object> body=new HashMap<>();body.put("rideId",ride.getId().toString());
   if(finished){body.put("posX",ride.getEndPosX());body.put("posY",ride.getEndPosY());}

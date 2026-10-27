@@ -117,6 +117,9 @@ public class RideRepositoryJdbcImpl implements RideRepository {
         }
     }
 
+    @Override public boolean position(UUID id,double x,double y,Instant at) {
+        return update("UPDATE rides SET last_pos_x=?,last_pos_y=?,last_position_at=? WHERE id=? AND status='ACTIVE'",x,y,Timestamp.from(at),id)==1;
+    }
     @Override public boolean activate(UUID id, Instant startedAt) {
         return update("UPDATE rides SET status='ACTIVE', started_at=? WHERE id=? AND status='STARTING'", Timestamp.from(startedAt),id)==1;
     }
@@ -148,6 +151,9 @@ public class RideRepositoryJdbcImpl implements RideRepository {
         ride.setStartPosY(resultSet.getObject("start_pos_y", Double.class));
         ride.setEndPosX(resultSet.getObject("end_pos_x", Double.class));
         ride.setEndPosY(resultSet.getObject("end_pos_y", Double.class));
+        ride.setLastPosX(resultSet.getObject("last_pos_x",Double.class));
+        ride.setLastPosY(resultSet.getObject("last_pos_y",Double.class));
+        ride.setLastPositionAt(readInstant(resultSet,"last_position_at"));
         ride.setDurationSeconds(resultSet.getObject("duration_seconds", Long.class));
         ride.setAmount(resultSet.getBigDecimal("amount"));
         ride.setCurrency(resultSet.getString("currency"));

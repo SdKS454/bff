@@ -20,8 +20,9 @@ public class ScooterServlet extends HttpServlet {
   }
   String[] parts=path==null?new String[0]:path.substring(1).split("/",-1);
   if(parts.length==1&&!parts[0].isBlank()){require(method,"GET");Json.write(resp,200,scooters.get(parts[0]));return;}
-  if(parts.length==2&&Set.of("reserve","release").contains(parts[1])){
+  if(parts.length==2&&Set.of("reserve","release","position").contains(parts[1])){
    require(method,"POST");var body=Json.body(req);var ride=Json.uuid(Json.string(body,"rideId"));
+   if(parts[1].equals("position")){Json.write(resp,200,scooters.position(parts[0],ride,Json.number(body,"posX",true),Json.number(body,"posY",true)));return;}
    if(parts[1].equals("reserve"))Json.write(resp,200,scooters.reserve(parts[0],ride,Json.uuid(Json.string(body,"userId"))));
    else {Double x=Json.number(body,"posX",false),y=Json.number(body,"posY",false);if((x==null)!=(y==null))throw new ApiException(400,"Нужны обе координаты");Json.write(resp,200,scooters.release(parts[0],ride,x,y));}return;
   }

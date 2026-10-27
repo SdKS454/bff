@@ -96,13 +96,13 @@ public class RideProxyServlet extends BaseServlet {
         String path = req.getPathInfo() == null ? "" : req.getPathInfo();
         req.setCharacterEncoding("UTF-8");
         try {
-            if (path.matches("^/[^/]+/finish$")) {
+            if (path.matches("^/[^/]+/(finish|position)$")) {
                 java.util.UUID id;
                 try { id = JsonText.uuid(path.split("/")[1]); }
                 catch (IllegalArgumentException e) { writeError(resp, 404, "Не найдено"); return; }
                 EndRideRequest body = readFinish(req);
-                JsonResponse finished = rideService.finish(jwt, id, body);
-                writeJson(resp, finished.status(), finished.body());
+                JsonResponse finished = path.endsWith("/position")?rideService.position(jwt,id,body):rideService.finish(jwt, id, body);
+                if(finished.status()==204)resp.setStatus(204);else writeJson(resp, finished.status(), finished.body());
                 return;
             }
             writeError(resp, HttpServletResponse.SC_NOT_FOUND, "Не найдено");

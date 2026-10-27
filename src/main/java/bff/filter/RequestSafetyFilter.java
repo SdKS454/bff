@@ -28,7 +28,7 @@ public class RequestSafetyFilter implements Filter {
                 return;
             }
             String path = req.getRequestURI().substring(req.getContextPath().length());
-            if (path.startsWith("/api/") && req.getContentLengthLong() != 0) {
+            if (path.startsWith("/api/") && (req.getContentLengthLong() > 0 || req.getHeader("Transfer-Encoding") != null)) {
                 String type = req.getContentType();
                 if (type == null || !"application/json".equalsIgnoreCase(type.split(";", 2)[0].trim())) {
                     error(resp, 415, "Ожидается Content-Type: application/json");

@@ -50,4 +50,19 @@ class RideWorkflowTest {
   verify(integration,never()).release(any(),anyBoolean());
  }
 
+ @Test void positionCannotChangeAnotherRideOrAFinishedRide() {
+  var repo=mock(RideRepository.class);var integration=mock(RideIntegrationService.class);var ride=new RideEntity();ride.setId(UUID.randomUUID());ride.setUserId(UUID.randomUUID());ride.setStatus("ACTIVE");
+  when(repo.findById(ride.getId())).thenReturn(Optional.of(ride));
+  var service=new RideServiceImpl(repo,integration);
+  assertEquals(403,assertThrows(ApiException.class,()->service.position(UUID.randomUUID(),ride.getId(),1,2)).getStatus());
+  ride.setStatus("FINISHED");
+  assertEquals(409,assertThrows(ApiException.class,()->service.position(ride.getUserId(),ride.getId(),1,2)).getStatus());verifyNoInteractions(integration);
+ }
+ @Test void activePositionForwardsToOwnedScooterAndSavesTimestamp() {
+  var repo=mock(RideRepository.class);var integration=mock(RideIntegrationService.class);var ride=new RideEntity();ride.setId(UUID.randomUUID());ride.setUserId(UUID.randomUUID());ride.setStatus("ACTIVE");
+  when(repo.findById(ride.getId())).thenReturn(Optional.of(ride));when(repo.position(any(),anyDouble(),anyDouble(),any())).thenReturn(true);
+  new RideServiceImpl(repo,integration).position(ride.getUserId(),ride.getId(),1.25,2.75);
+  verify(integration).position(ride,1.25,2.75);verify(repo).position(eq(ride.getId()),eq(1.25),eq(2.75),any());
+ }
+
 }

@@ -52,7 +52,7 @@ function renderFleet() {
       <div class="charge-heading"><span>Заряд аккумулятора</span><strong>${chargeLabel(s)}</strong></div>
       <div class="charge-bar"><span style="width:${chargeValue(s) ?? 0}%"></span></div>
       <div class="product-location"><svg><use href="#pin"/></svg><div>Координаты самоката<small>X: ${coordinate(s.posX)}, Y: ${coordinate(s.posY)}</small></div></div>
-      ${finite(s.distance) ? `<div class="range-row"><span>Расстояние</span><strong>${coordinate(s.distance)}</strong></div>` : ''}
+      ${finite(s.distance) ? `<div class="range-row"><span>Расстояние</span><strong>${coordinate(s.distance)} ед. сетки</strong></div>` : ''}
       <button class="product-action" data-scooter="${escapeHtml(s.numberPlate)}" type="button"><span>Подробнее о самокате</span><b>→</b></button>
     </article>`).join('');
   document.getElementById('fleet-count').textContent = viewState.user ? `Свободно ${viewState.fleet.filter(s => s.status === 'READY').length} из ${viewState.fleet.length}` : 'Самокаты доступны после входа';
@@ -94,7 +94,7 @@ document.getElementById('all-reviews').addEventListener('click', () => {
   openDialog(`<h2>Отзывы о поездках</h2><div class="dialog-reviews">${reviews.map(r => `<article><span class="stars">★★★★★</span><h3>${escapeHtml(r.querySelector('h3').textContent)}</h3><p>${escapeHtml(r.querySelector('.quote p').textContent)}</p></article>`).join('')}</div>`);
 });
 document.querySelector('.dialog-close').addEventListener('click', () => dialog.close());
-dialog.addEventListener('close', () => { document.body.style.overflow = ''; dialog.classList.remove('account-dialog'); });
+dialog.addEventListener('close', () => { if(dialog.open)return; document.body.style.overflow = ''; dialog.classList.remove('account-dialog'); });
 dialog.addEventListener('click', event => {
   if (event.target === dialog) { const r = dialog.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) dialog.close(); }
 });

@@ -54,4 +54,46 @@ class DocumentServiceTest {
         when(ride.getRide(anyString(),anyString())).thenReturn(result);
         assertEquals(409,assertThrows(ApiException.class,()->service.generate(request,JwtUtilTest.authorization())).getStatusCode());
     }
+    @Test void metadataAndDownloadRejectForeignDocuments() {
+        var d=new ru.kicksharing.documents.entity.Document(UUID.randomUUID(),"USER_HISTORY",null,null,null);
+        when(repository.findById(d.getId(),false)).thenReturn(java.util.Optional.of(d));
+        assertEquals(403,assertThrows(ApiException.class,()->service.metadata(JwtUtilTest.authorization(),d.getId())).getStatusCode());
+        assertEquals(403,assertThrows(ApiException.class,()->service.download(JwtUtilTest.authorization(),d.getId())).getStatusCode());
+        verifyNoInteractions(pdf);
+    }
+    @Test void deleteIsIdempotentButNeverDeletesOthers() {
+        var d=new ru.kicksharing.documents.entity.Document(JwtUtilTest.USER,"USER_BLOCKED",null,null,null);d.setDeleted(true);
+        when(repository.findById(d.getId(),true)).thenReturn(java.util.Optional.of(d));
+        service.delete(JwtUtilTest.authorization(),d.getId());verify(repository,never()).softDelete(any(),any());
+        d.setUserId(UUID.randomUUID());
+        assertEquals(403,assertThrows(ApiException.class,()->service.delete(JwtUtilTest.authorization(),d.getId())).getStatusCode());
+    }
+    @Test void historyUsesCurrentOwnerAndBoundedPagination() {
+        when(repository.findByUserId(JwtUtilTest.USER,1,2)).thenReturn(java.util.List.of());
+        assertTrue(service.history(JwtUtilTest.authorization(),1,2).isEmpty());
+        verify(repository).findByUserId(JwtUtilTest.USER,1,2);
+        assertEquals(400,assertThrows(ApiException.class,()->service.history(JwtUtilTest.authorization(),101,0)).getStatusCode());
+    }
+    @Test void pendingDocumentCannotPretendToHaveDownloadablePdf() {
+        var d=new ru.kicksharing.documents.entity.Document(JwtUtilTest.USER,"USER_BLOCKED",null,null,null);
+        when(repository.findById(d.getId(),false)).thenReturn(java.util.Optional.of(d));
+        assertEquals(409,assertThrows(ApiException.class,()->service.download(JwtUtilTest.authorization(),d.getId())).getStatusCode());
+        verify(repository,never()).save(any());verifyNoInteractions(pdf);
+    }
+    @Test void metadataDatesAreIsoStrings() {
+        var d=new ru.kicksharing.documents.entity.Document(JwtUtilTest.USER,"USER_HISTORY",null,java.time.LocalDate.of(2026,10,1),java.time.LocalDate.of(2026,10,27));
+        String json=ru.kicksharing.documents.util.JsonUtil.toJson(ru.kicksharing.documents.dto.DocumentMetadata.of(d));
+        assertTrue(json.contains("2026-10-01"));assertTrue(json.contains("\"createdAt\":\""));
+    }
+
+    @Test void historicalDownloadUsesSnapshotWithoutQueryingCurrentBan() {
+        var d=new ru.kicksharing.documents.entity.Document(JwtUtilTest.USER,"USER_BLOCKED",null,null,null);d.setStatus("GENERATED");
+        var data=new ru.kicksharing.documents.dto.internal.UserBlockedDto();data.setUserFullName("Иван Петров");data.setReason("Опасное вождение");
+        d.setPayloadJson(ru.kicksharing.documents.util.JsonUtil.toJson(data));
+        when(repository.findById(d.getId(),false)).thenReturn(java.util.Optional.of(d));
+        when(pdf.generatePdf(eq("user-blocked"),any())).thenReturn(new byte[]{1,2,3});
+        assertArrayEquals(new byte[]{1,2,3},service.download(JwtUtilTest.authorization(),d.getId()));
+        verifyNoInteractions(mod,ride);verify(user,never()).getUser(anyString(),anyString());verify(repository,never()).save(any());
+    }
+
 }

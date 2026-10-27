@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS documents (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
     generated_at TIMESTAMP WITH TIME ZONE,
 
+    payload_json JSONB,
+
     -- Soft delete
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     deleted_at TIMESTAMP WITH TIME ZONE

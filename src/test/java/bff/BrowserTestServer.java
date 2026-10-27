@@ -82,6 +82,7 @@ public final class BrowserTestServer {
             else result = started ? "[" + ride() + "]" : "[]";
         } else if (path.endsWith("/finish")) { code = status("finishStatus", 200); if (code == 200) rideState = "FINISHED"; result = ride(); }
         else if (path.endsWith("/pay")) { code = status("payStatus", 200); if (code == 200) rideState = "PAID"; result = ride(); }
+        else if(path.equals("/api/documents")){result="[]";}
         else if (path.equals("/api/documents/generate")) {
             code = status("documentStatus", 200);
             if (code == 200) { send(e, code, "application/pdf", "%PDF-1.4\nfixture\n%%EOF"); return; }

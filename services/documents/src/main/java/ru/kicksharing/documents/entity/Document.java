@@ -11,6 +11,9 @@ public class Document {
     private UUID sourceId;
     private LocalDate periodFrom;
     private LocalDate periodTo;
+    private String payloadJson;
+    public String getPayloadJson(){return payloadJson;}
+    public void setPayloadJson(String value){payloadJson=value;}
     private String status; // PENDING, GENERATED, FAILED
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;

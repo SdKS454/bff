@@ -191,7 +191,7 @@ test('history PDF and nearest search use actual API paths with entered coordinat
   await page.locator('.dialog-close').click(); await page.locator('#nearest-fleet').click();
   await fillCoords('#nearest-form'); await page.locator('#nearest-form [type="submit"]').click();
   await page.waitForFunction(() => !document.querySelector('#details').open);
-  assert.match(await page.locator('#catalog-message').innerText(),/Единицы расстояния/);
+  assert.match(await page.locator('#catalog-message').innerText(),/единицах учебной сетки/);
   assert.ok((await calls()).some(c => c.method === 'POST' && c.path === '/api/scooters/nearest'));
 });
 test('registered account is not registered twice when subsequent login fails', async () => {
@@ -208,4 +208,27 @@ test('failed token revocation clears private UI but shows an error, never succes
   assert.match(await page.locator('#toast').innerText(),/не подтвердил отзыв/);
   assert.equal(await page.locator('.profile-data').count(),0);
   assert.equal(await page.locator('.product').count(),0);
+});
+test('successful login clears auth URL and session survives reload', async () => {
+  await login();
+  assert.equal(new URL(page.url()).searchParams.has('auth'),false);
+  await page.reload();await page.locator('.product').first().waitFor();
+  assert.equal(await page.locator('#auth-form').count(),0);
+  await page.locator('#account-button').click();await page.locator('.profile-data').waitFor();
+});
+test('late document history cannot reopen a closed account dialog', async () => {
+  await login();
+  await page.route(/\/api\/documents\?/,async route=>{await new Promise(resolve=>setTimeout(resolve,300));await route.continue();});
+  const loading=page.waitForResponse(response=>response.url().includes('/api/documents?'));
+  await page.locator('[data-account-tab="documents"]').click();await page.locator('#history-document-form').waitFor();await page.locator('.dialog-close').click();
+  await (await loading).finished();await page.waitForTimeout(100);
+  assert.equal(await page.locator('#details').evaluate(dialog=>dialog.open),false);
+});
+test('closing the account while navigation refreshes cancels the late navigation', async () => {
+  await login();
+  await page.route(/\/api\/users\/me$/,async route=>{await new Promise(resolve=>setTimeout(resolve,300));await route.continue();});
+  const loading=page.waitForResponse(response=>response.url().endsWith('/api/users/me'));
+  await page.locator('[data-account-tab="rides"]').click();await page.locator('.dialog-close').click();
+  await (await loading).finished();await page.waitForTimeout(100);
+  assert.equal(await page.locator('#details').evaluate(dialog=>dialog.open),false);
 });

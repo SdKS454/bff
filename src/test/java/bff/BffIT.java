@@ -85,6 +85,9 @@ class BffIT {
         else if (path.equals("/api/users/exists")) result = "{\"exists\":true}";
         else if (path.equals("/api/rates")) result="[{\"id\":\"6ba7b810-9dad-11d1-80b4-00c04fd430c8\",\"unlockFee\":50,\"pricePerMinute\":8,\"currency\":\"RUB\"}]";
         else if (path.endsWith("/blocked")) { status = blockedStatus; result = blockedBody; }
+        else if(path.equals("/api/documents"))result="[]";
+        else if(path.equals("/api/documents/"+RIDE)&&e.getRequestMethod().equals("DELETE"))status=204;
+        else if(path.equals("/api/rides/"+RIDE+"/position"))status=204;
         else if (path.equals("/api/documents/generate") && documentStatus == 200) {
             e.getResponseHeaders().set("Content-Type", documentContentType);
             e.sendResponseHeaders(200, documentBody.length);
@@ -281,6 +284,34 @@ class BffIT {
         var result=request("GET","/api/rates",null,"Bearer t");
         assertEquals(200,result.statusCode());assertTrue(result.body().contains("pricePerMinute"));
         assertEquals("Bearer t",last("/api/rates").authorization());
+    }
+    @Test void bodylessDeleteWithoutLengthWorksButChunkedNonJsonStillFails() throws Exception {
+        URI uri=URI.create(base);
+        try(Socket socket=new Socket(uri.getHost(),uri.getPort())) {
+            socket.setSoTimeout(10000);
+            String wire="DELETE "+uri.getPath()+"/api/documents/"+RIDE+" HTTP/1.1\r\nHost: "+uri.getHost()+":"+uri.getPort()+"\r\nAuthorization: Bearer t\r\nConnection: close\r\n\r\n";
+            socket.getOutputStream().write(wire.getBytes(StandardCharsets.US_ASCII));
+            var reader=new BufferedReader(new InputStreamReader(socket.getInputStream(),StandardCharsets.US_ASCII));
+            assertTrue(reader.readLine().startsWith("HTTP/1.1 204"));
+        }
+        assertEquals("DELETE",last("/api/documents/"+RIDE).method());
+        var chunked=HttpRequest.newBuilder(URI.create(base+"/api/auth/login"))
+            .header("Content-Type","text/plain").POST(HttpRequest.BodyPublishers.ofInputStream(
+                ()->new ByteArrayInputStream("{}".getBytes(StandardCharsets.US_ASCII)))).build();
+        assertEquals(415,client.send(chunked,HttpResponse.BodyHandlers.ofString()).statusCode());
+    }
+
+    @Test void documentHistoryPaginationAndTokenAreForwarded() throws Exception {
+        assertEquals(200,request("GET","/api/documents?limit=1&offset=2",null,"Bearer t").statusCode());
+        assertEquals("limit=1&offset=2",last("/api/documents").query());
+        assertEquals("Bearer t",last("/api/documents").authorization());
+        assertEquals(400,request("GET","/api/documents?limit=101",null,"Bearer t").statusCode());
+        assertEquals(404,request("GET","/api/documents/not-a-uuid",null,"Bearer t").statusCode());
+    }
+    @Test void positionUsesOriginalTokenAndReturnsNoContent() throws Exception {
+        assertEquals(204,request("PUT","/api/rides/"+RIDE+"/position","{\"posX\":10.25,\"posY\":11.75}","Bearer t").statusCode());
+        assertEquals("Bearer t",last("/api/rides/"+RIDE+"/position").authorization());
+        assertEquals(400,request("PUT","/api/rides/"+RIDE+"/position","{\"posX\":10}","Bearer t").statusCode());
     }
     @Test void documentIdentityComesFromProfileAndLegacyTypeIsMapped() throws Exception {
         var response = request("POST", "/api/documents/generate", "{\"userId\":\"" + OTHER + "\",\"docType\":\"RECEIPT\",\"sourceId\":\"" + RIDE + "\",\"status\":\"PAID\"}", "Bearer t");

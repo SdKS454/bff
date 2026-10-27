@@ -14,6 +14,8 @@ public interface RideRepository {
 
     List<RideEntity> findByUserId(UUID userId);
 
+    boolean position(UUID id,double x,double y,Instant at);
+
     boolean finish(RideEntity ride);
 
     boolean activate(UUID id, Instant startedAt);

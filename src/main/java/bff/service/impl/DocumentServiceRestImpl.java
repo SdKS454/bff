@@ -29,9 +29,28 @@ public class DocumentServiceRestImpl implements DocumentService {
         if (jwt != null && !jwt.isBlank()) {
             builder.header("Authorization", "Bearer " + jwt);
         }
+        return pdf(builder.build());
+    }
+    @Override public byte[] download(String jwt,java.util.UUID id) {
+        return pdf(HttpRequest.newBuilder(URI.create(BASE+"/api/documents/"+id+"/download"))
+                .header("Authorization","Bearer "+jwt).header("Accept","application/pdf")
+                .timeout(Duration.ofSeconds(10)).GET().build());
+    }
+    @Override public bff.dto.JsonResponse metadata(String jwt,String method,String path) {
+        try {
+            var response=httpClient.send(HttpRequest.newBuilder(URI.create(BASE+"/api/documents"+path))
+                    .header("Authorization","Bearer "+jwt).header("Accept","application/json")
+                    .timeout(Duration.ofSeconds(10)).method(method,HttpRequest.BodyPublishers.noBody()).build(),HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            if(response.statusCode()!=204 && !response.headers().firstValue("Content-Type").orElse("").split(";",2)[0].trim().equalsIgnoreCase("application/json"))
+                throw new ServiceException(502,"Некорректный ответ сервиса документов");
+            return new bff.dto.JsonResponse(response.statusCode(),response.body());
+        }catch(InterruptedException e){Thread.currentThread().interrupt();throw new ServiceException(503,"Запрос прерван",e);}
+        catch(IOException e){throw new ServiceException(503,"Сервис документов недоступен",e);}
+    }
+    private byte[] pdf(HttpRequest request) {
         try {
             HttpResponse<byte[]> response = httpClient.send(
-                    builder.build(), HttpResponse.BodyHandlers.ofByteArray());
+                    request, HttpResponse.BodyHandlers.ofByteArray());
             byte[] body = response.body() == null ? new byte[0] : response.body();
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 String text = new String(body, StandardCharsets.UTF_8).trim();

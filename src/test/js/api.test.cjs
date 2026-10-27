@@ -67,3 +67,16 @@ test('ADMIN redirects with JWT only in fragment, USER never redirects', async ()
   assert.equal(new URLSearchParams(destination.hash.slice(1)).get('accessToken'),'test.jwt+value/=');
   assert.equal(store.size,0);
 });
+test('stored document download uses authenticated GET and rejects non-PDF data', async () => {
+  let call, clicked=false;
+  const {api,context}=setup(async (path,options)=>{call={path,options};return{ok:true,status:200,headers:{get:()=> 'application/pdf'},blob:async()=>({})};});
+  context.URL={createObjectURL:()=> 'blob:test',revokeObjectURL:()=>{}};
+  context.setTimeout=fn=>fn();
+  context.document.createElement=()=>({click:()=>{clicked=true;},remove:()=>{}});
+  context.document.body.append=()=>{};
+  await api.downloadDocument(undefined,'7c9e6679-7425-40de-944b-e07fc1f90ae7');
+  assert.equal(call.path,'/scooter-bff/api/documents/7c9e6679-7425-40de-944b-e07fc1f90ae7/download');
+  assert.equal(call.options.method,'GET');assert.equal(call.options.credentials,'same-origin');assert.equal(clicked,true);
+  const bad=setup(async()=>({ok:true,status:200,headers:{get:()=> 'text/html'}}));
+  await assert.rejects(bad.api.downloadDocument(undefined,'id'),e=>e.status===502);
+});

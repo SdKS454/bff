@@ -80,6 +80,10 @@ public class RideServlet extends HttpServlet {
 
     @Override
     protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        if(req.getPathInfo()!=null && req.getPathInfo().endsWith("/position")) {
+            String[] parts=req.getPathInfo().split("/",-1);if(parts.length!=3)throw new ApiException(404,"Путь не найден");
+            var body=ru.itis.util.Json.body(req);rideService.position((UUID)req.getAttribute("userId"),parseUuid(parts[1],404),ru.itis.util.Json.number(body,"posX",true),ru.itis.util.Json.number(body,"posY",true));resp.setStatus(204);return;
+        }
         UUID id = parseRideId(req, "finish");
         FinishRideRequest body = objectMapper.treeToValue(ru.itis.util.Json.body(req), FinishRideRequest.class);
         if (body == null || body.getPosX() == null || body.getPosY() == null) {

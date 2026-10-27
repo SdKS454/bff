@@ -25,6 +25,9 @@ public class RideServiceRestImpl implements RideService {
         return send("POST", URI.create(BASE + "/api/rides"), jwt, toJson(request));
     }
 
+    @Override public JsonResponse position(String jwt,UUID id,EndRideRequest request) {
+        return send("PUT",URI.create(BASE+"/api/rides/"+id+"/position"),jwt,"{\"posX\":"+request.posX()+",\"posY\":"+request.posY()+"}");
+    }
     @Override
     public JsonResponse finish(String jwt, UUID rideId, EndRideRequest request) {
         String json = "{\"posX\":" + request.posX() + ",\"posY\":" + request.posY() + "}";

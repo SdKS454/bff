@@ -8,6 +8,8 @@ import java.util.UUID;
 public interface RideService {
     RideEntity start(UUID userId, String numberPlate, UUID rateId, Double posX, Double posY);
 
+    void position(UUID userId,UUID id,double x,double y);
+
     RideEntity finish(UUID userId, UUID id, double posX, double posY);
 
     RideEntity get(UUID userId, UUID id);

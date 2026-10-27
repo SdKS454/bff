@@ -68,15 +68,11 @@ public class DocumentService {
 
         try {
             // 3. Маршрутизация по типу
-            byte[] pdf = switch (docType) {
-                case "RIDE_PAYMENT" -> buildRidePayment(req, downstreamJwt);
-                case "USER_BLOCKED" -> buildUserBlocked(req, downstreamJwt);
-                case "USER_HISTORY" -> buildUserHistory(req, downstreamJwt);
-                default -> throw ApiException.badRequest("Неизвестный docType: " + docType);
-            };
+            Object data = buildData(req,downstreamJwt,docType);
+            byte[] pdf = renderData(docType,data);
 
             // 4. Обновляем статус на GENERATED
-            repository.updateStatus(document.getId(), "GENERATED", OffsetDateTime.now());
+            repository.markGenerated(document.getId(),ru.kicksharing.documents.util.JsonUtil.toJson(data),OffsetDateTime.now());
             return pdf;
 
         } catch (Exception e) {
@@ -87,13 +83,65 @@ public class DocumentService {
         }
     }
 
+    private Object buildData(GenerateDocumentRequest req,String jwt,String type) {
+        return switch(type) {
+            case "RIDE_PAYMENT" -> buildRidePayment(req,jwt);
+            case "USER_BLOCKED" -> buildUserBlocked(req,jwt);
+            case "USER_HISTORY" -> buildUserHistory(req,jwt);
+            default -> throw ApiException.badRequest("Неизвестный docType");
+        };
+    }
+    private byte[] renderData(String type,Object data) {
+        Context ctx=new Context();ctx.setVariable("doc",data);
+        String template=switch(type){case "RIDE_PAYMENT"->"ride-payment";case "USER_BLOCKED"->"user-blocked";case "USER_HISTORY"->"user-history";default->throw ApiException.badRequest("Неизвестный docType");};
+        return pdfService.generatePdf(template,ctx);
+    }
+    private UUID actor(String auth) {
+        UUID id=JwtUtil.extractUserId(auth);userClient.validate(auth.substring(7).trim());return id;
+    }
+    private Document owned(UUID id,UUID owner,boolean includeDeleted) {
+        Document document=repository.findById(id,includeDeleted).orElseThrow(()->ApiException.notFound("Документ не найден"));
+        if(!owner.equals(document.getUserId()))throw ApiException.forbidden("Чужой документ");return document;
+    }
+    public java.util.List<ru.kicksharing.documents.dto.DocumentMetadata> history(String auth,int limit,int offset) {
+        UUID owner=actor(auth);
+        if(limit<1||limit>100||offset<0)throw ApiException.badRequest("Некорректные limit/offset");
+        repository.expirePending(owner);
+        return repository.findByUserId(owner,limit,offset).stream().map(ru.kicksharing.documents.dto.DocumentMetadata::of).toList();
+    }
+    public ru.kicksharing.documents.dto.DocumentMetadata metadata(String auth,UUID id) {
+        return ru.kicksharing.documents.dto.DocumentMetadata.of(owned(id,actor(auth),false));
+    }
+    public void delete(String auth,UUID id) {
+        UUID owner=actor(auth);Document document=owned(id,owner,true);
+        if(!document.isDeleted())repository.softDelete(id,owner);
+    }
+    public byte[] download(String auth,UUID id) {
+        Document document=owned(id,actor(auth),false);
+        if(!"GENERATED".equals(document.getStatus()))throw ApiException.conflict("Документ не был сформирован: повторите генерацию");
+        GenerateDocumentRequest req=new GenerateDocumentRequest();
+        req.setUserId(document.getUserId());req.setDocType(document.getDocumentType());req.setSourceId(document.getSourceId());req.setFrom(document.getPeriodFrom());req.setTo(document.getPeriodTo());
+        // PDF bytes are not stored. A saved data snapshot preserves the historical content.
+        Object data;
+        if(document.getPayloadJson()!=null) {
+            Class<?> type=switch(document.getDocumentType()) {case "RIDE_PAYMENT"->RidePaymentDto.class;case "USER_BLOCKED"->UserBlockedDto.class;case "USER_HISTORY"->UserHistoryDto.class;default->throw new ApiException(502,"Неизвестный тип снимка документа");};
+            try{data=ru.kicksharing.documents.util.JsonUtil.fromJson(document.getPayloadJson(),type);if(data==null)throw new IllegalArgumentException();}
+            catch(RuntimeException e){throw new ApiException(502,"Повреждён снимок документа");}
+        }else {
+            // Compatibility with documents generated before snapshots were introduced.
+            data=buildData(req,auth.substring(7).trim(),document.getDocumentType());
+            repository.markGenerated(id,ru.kicksharing.documents.util.JsonUtil.toJson(data),document.getGeneratedAt());
+        }
+        return renderData(document.getDocumentType(),data);
+    }
+
     // BFF может присылать RECEIPT — приводим к нашему RIDE_PAYMENT
     private String normalizeDocType(String docType) {
         if ("RECEIPT".equals(docType)) return "RIDE_PAYMENT";
         return docType;
     }
 
-    private byte[] buildRidePayment(GenerateDocumentRequest req, String token) {
+    private RidePaymentDto buildRidePayment(GenerateDocumentRequest req, String token) {
         if (req.getSourceId() == null) throw ApiException.badRequest("sourceId обязателен для RIDE_PAYMENT");
 
         RideResponse ride = rideClient.getRide(req.getSourceId().toString(), token);
@@ -114,12 +162,10 @@ public class DocumentService {
         dto.setUserFullName(user.getFullName());
         dto.setUserLogin(user.getLogin());
 
-        Context ctx = new Context();
-        ctx.setVariable("doc", dto);
-        return pdfService.generatePdf("ride-payment", ctx);
+        return dto;
     }
 
-    private byte[] buildUserBlocked(GenerateDocumentRequest req, String token) {
+    private UserBlockedDto buildUserBlocked(GenerateDocumentRequest req, String token) {
         ModerationResponse status = moderationClient.getStatus(req.getUserId().toString(), token);
         if (!status.isBlocked()) throw ApiException.conflict("Пользователь не заблокирован");
 
@@ -132,12 +178,10 @@ public class DocumentService {
         dto.setBlockedAt(status.getBlockedAt());
         dto.setBlockedUntil(status.getBlockedUntil());
 
-        Context ctx = new Context();
-        ctx.setVariable("doc", dto);
-        return pdfService.generatePdf("user-blocked", ctx);
+        return dto;
     }
 
-    private byte[] buildUserHistory(GenerateDocumentRequest req, String token) {
+    private UserHistoryDto buildUserHistory(GenerateDocumentRequest req, String token) {
         if (req.getFrom() == null || req.getTo() == null) {
             throw ApiException.badRequest("from и to обязательны для USER_HISTORY");
         }
@@ -173,8 +217,6 @@ public class DocumentService {
         dto.setTo(req.getTo());
         dto.setRides(filtered);
 
-        Context ctx = new Context();
-        ctx.setVariable("doc", dto);
-        return pdfService.generatePdf("user-history", ctx);
+        return dto;
     }
 }

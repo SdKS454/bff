@@ -54,6 +54,12 @@ public class RideServiceImpl implements RideService {
         }
     }
 
+    @Override public void position(UUID userId,UUID id,double x,double y) {
+        checkCoordinates(x,y);RideEntity ride=getOwnedRide(userId,id);
+        if(!ride.getStatus().equals("ACTIVE"))throw new ApiException(409,"Позицию можно обновить только в активной поездке");
+        integrationService.position(ride,x,y);
+        if(!rideRepository.position(id,x,y,now()))throw new ApiException(409,"Поездка уже завершается");
+    }
     @Override
     public RideEntity finish(UUID userId, UUID id, double posX, double posY) {
         checkCoordinates(posX, posY);
@@ -145,8 +151,8 @@ public class RideServiceImpl implements RideService {
     }
 
     private void checkCoordinates(Double posX, Double posY) {
-        if ((posX != null && !Double.isFinite(posX)) || (posY != null && !Double.isFinite(posY))) {
-            throw new ApiException(400, "Координаты должны быть конечными числами");
+        if ((posX != null && (!Double.isFinite(posX)||Math.abs(posX)>1_000_000)) || (posY != null && (!Double.isFinite(posY)||Math.abs(posY)>1_000_000))) {
+            throw new ApiException(400, "Координаты должны быть числами от -1000000 до 1000000");
         }
     }
 

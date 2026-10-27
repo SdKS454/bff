@@ -57,9 +57,16 @@ public class DocumentRepository {
         }
     }
 
+    public void markGenerated(UUID id,String payload,OffsetDateTime at) {
+        String sql="UPDATE documents SET status='GENERATED',payload_json=?::jsonb,generated_at=?,updated_at=? WHERE id=? AND NOT is_deleted";
+        try(var c=DatabaseConnection.getConnection();var q=c.prepareStatement(sql)){
+            q.setString(1,payload);q.setObject(2,at);q.setObject(3,at);q.setObject(4,id);q.executeUpdate();
+        }catch(SQLException e){throw new RuntimeException("Ошибка сохранения снимка документа",e);}
+    }
     // 3. Найти по ID (только неудаленные)
-    public Optional<Document> findById(UUID id) {
-        String sql = "SELECT * FROM documents WHERE id = ? AND is_deleted = FALSE";
+    public Optional<Document> findById(UUID id) { return findById(id,false); }
+    public Optional<Document> findById(UUID id,boolean includeDeleted) {
+        String sql = "SELECT * FROM documents WHERE id = ?"+(includeDeleted?"":" AND is_deleted = FALSE");
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -76,13 +83,15 @@ public class DocumentRepository {
     }
 
     // 4. История документов пользователя (без удаленных)
-    public List<Document> findByUserId(UUID userId) {
-        String sql = "SELECT * FROM documents WHERE user_id = ? AND is_deleted = FALSE ORDER BY created_at DESC";
+    public List<Document> findByUserId(UUID userId) { return findByUserId(userId,50,0); }
+    public List<Document> findByUserId(UUID userId,int limit,int offset) {
+        String sql = "SELECT * FROM documents WHERE user_id = ? AND is_deleted = FALSE ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?";
         List<Document> documents = new ArrayList<>();
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setObject(1, userId);
+            stmt.setInt(2,limit);stmt.setInt(3,offset);
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     documents.add(mapRowToDocument(rs));
@@ -94,6 +103,11 @@ public class DocumentRepository {
         }
     }
 
+    public void expirePending(UUID owner) {
+        String sql="UPDATE documents SET status='FAILED',updated_at=NOW() WHERE user_id=? AND status='PENDING' AND created_at<NOW()-INTERVAL '2 minutes'";
+        try(var c=DatabaseConnection.getConnection();var q=c.prepareStatement(sql)){q.setObject(1,owner);q.executeUpdate();}
+        catch(SQLException e){throw new RuntimeException("Ошибка восстановления истории документов",e);}
+    }
     // 5. Soft delete
     public void softDelete(UUID id, UUID userId) {
         String sql = "UPDATE documents SET is_deleted = TRUE, deleted_at = ?, updated_at = ? WHERE id = ? AND user_id = ? AND is_deleted = FALSE";
@@ -120,6 +134,7 @@ public class DocumentRepository {
         doc.setPeriodFrom(rs.getObject("period_from", java.time.LocalDate.class));
         doc.setPeriodTo(rs.getObject("period_to", java.time.LocalDate.class));
         doc.setStatus(rs.getString("status"));
+        doc.setPayloadJson(rs.getString("payload_json"));
         doc.setCreatedAt(rs.getObject("created_at", OffsetDateTime.class));
         doc.setUpdatedAt(rs.getObject("updated_at", OffsetDateTime.class));
         doc.setGeneratedAt(rs.getObject("generated_at", OffsetDateTime.class));

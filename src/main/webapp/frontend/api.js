@@ -27,8 +27,9 @@
     try { return await result.json(); }
     catch (_) { throw new ApiError(502, 'Сервис вернул некорректный JSON.'); }
   }
-  async function downloadDocument(body) {
-    const result = await response('/api/documents/generate', 'POST', body);
+  async function downloadDocument(body, documentId) {
+    const result = documentId ? await response('/api/documents/' + encodeURIComponent(documentId) + '/download')
+      : await response('/api/documents/generate', 'POST', body);
     if (!/^application\/pdf(?:;|$)/i.test(result.headers.get('Content-Type') || ''))
       throw new ApiError(502, 'Сервис не вернул PDF-документ.');
     const url = URL.createObjectURL(await result.blob());

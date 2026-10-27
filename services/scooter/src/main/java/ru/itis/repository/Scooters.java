@@ -71,5 +71,11 @@ public class Scooters {
    }catch(SQLException|RuntimeException e){c.rollback();throw e;}
   }catch(SQLException e){throw unavailable(e);}
  }
+ public Scooter position(String plate,UUID ride,double x,double y) {
+  try(var c=connect();var q=c.prepareStatement("UPDATE scooter SET position_x=?,position_y=? WHERE numeric_plate=? AND NOT is_deleted AND status='IN_RIDE' AND reservation_id=?")) {
+   q.setDouble(1,x);q.setDouble(2,y);q.setString(3,plate);q.setObject(4,ride);
+   if(q.executeUpdate()!=1)throw new ApiException(409,"Самокат больше не принадлежит активной поездке");return get(plate);
+  }catch(SQLException e){throw unavailable(e);}
+ }
  private ApiException unavailable(SQLException e){return new ApiException(503,"Хранилище самокатов недоступно");}
 }

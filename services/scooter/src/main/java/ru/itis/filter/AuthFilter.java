@@ -18,7 +18,7 @@ public class AuthFilter implements Filter {
   resp.setHeader("Cache-Control","no-store");resp.setHeader("X-Content-Type-Options","nosniff");
   try {
    String path=req.getRequestURI().substring(req.getContextPath().length());
-   boolean internal=path.matches("/api/scooters/[^/]+/(reserve|release)");
+   boolean internal=path.matches("/api/scooters/[^/]+/(reserve|release|position)");
    if(internal){
     String expected=System.getenv("SERVICE_API_KEY"),actual=req.getHeader("X-Service-Key");
     if(expected==null||expected.isBlank())throw new ApiException(503,"Не настроен ключ интеграции");

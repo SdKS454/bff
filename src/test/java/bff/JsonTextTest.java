@@ -27,6 +27,7 @@ class JsonTextTest {
         assertThrows(IllegalArgumentException.class, () -> JsonText.coordinate("{\"x\":\"12\"}", "x", true));
         assertThrows(IllegalArgumentException.class, () -> JsonText.coordinate("{\"x\":1e9999}", "x", true));
         assertThrows(IllegalArgumentException.class, () -> JsonText.coordinate("{\"x\":null}", "x", true));
+        assertThrows(IllegalArgumentException.class, () -> JsonText.coordinate("{\"x\":1000001}","x",true));
         assertNull(JsonText.coordinate("{}", "x", false));
     }
     @Test void handlesEscapesAndNestedKeysWithoutConfusion() {
