@@ -1,0 +1,6 @@
+# Preserve exact bytes for the prebuilt-source SHA256 manifest on every OS.
+* -text
+*.war binary
+*.ttf binary
+*.png binary
+*.jpg binary
