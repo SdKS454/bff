@@ -1,8 +1,8 @@
 {
   "info": {
-    "name": "Kicksharing — все 58 API (ручной справочник)",
+    "name": "Kicksharing — все 60 API (ручной справочник)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "По коду 4f64344. Используйте docs/FULL_API_URL_CHECKLIST.md. Ручной запуск отдельных запросов по предусловиям, не автоматический сквозной Runner. Заполните коллекционные переменные. USER_BLOCKED/USER_HISTORY — варианты тела generate из инструкции. Logout в конце. Реальные ключи/токены в репозиторий не сохраняйте."
+    "description": "По коду a460d8a. Используйте docs/FULL_API_URL_CHECKLIST.md. Ручной запуск отдельных запросов по предусловиям, не автоматический сквозной Runner. Заполните коллекционные переменные. Публичные отзывы не требуют токена. USER_BLOCKED/USER_HISTORY — варианты тела generate из инструкции. Logout в конце. Реальные ключи/токены в репозиторий не сохраняйте."
   },
   "variable": [
     {
@@ -136,6 +136,10 @@
             "method": "POST",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Content-Type",
                 "value": "application/json"
               }
@@ -169,6 +173,10 @@
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
@@ -204,6 +212,10 @@
             "method": "POST",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               }
@@ -227,7 +239,12 @@
           "name": "E007 GET /api/users/exists?login={{loginA}}",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
             "url": "{{bff}}/api/users/exists?login={{loginA}}",
             "description": "\n{\"exists\":true}; новый незанятый логин → false\nИсточник: src/main/java/bff/servlet/UserProxyServlet.java"
           },
@@ -248,6 +265,10 @@
           "request": {
             "method": "GET",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
@@ -274,6 +295,10 @@
             "method": "GET",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               }
@@ -298,6 +323,10 @@
           "request": {
             "method": "GET",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
@@ -324,6 +353,10 @@
             "method": "GET",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               }
@@ -348,6 +381,10 @@
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
@@ -387,6 +424,10 @@
             "method": "GET",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               }
@@ -412,6 +453,10 @@
             "method": "GET",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               }
@@ -436,6 +481,10 @@
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
@@ -475,6 +524,10 @@
             "method": "PUT",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               },
@@ -512,6 +565,10 @@
           "request": {
             "method": "PUT",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
@@ -551,6 +608,10 @@
             "method": "PUT",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               },
@@ -588,6 +649,10 @@
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
@@ -627,6 +692,10 @@
             "method": "POST",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               },
@@ -665,6 +734,10 @@
             "method": "GET",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               }
@@ -689,6 +762,10 @@
           "request": {
             "method": "GET",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
@@ -715,6 +792,10 @@
             "method": "GET",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               }
@@ -740,6 +821,10 @@
             "method": "DELETE",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               }
@@ -758,6 +843,31 @@
               }
             }
           ]
+        },
+        {
+          "name": "E059 GET /api/reviews?limit=20&offset=0",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bff}}/api/reviews?limit=20&offset=0",
+            "description": "Нужна миграция отзывов 002; пустой список допустим\nПубличный массив оценок, комментариев и reviewedAt; нет userId, rideId, логинов, сумм и координат\nИсточник: src/main/java/bff/servlet/PublicReviewProxyServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -769,6 +879,10 @@
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Content-Type",
                 "value": "application/json"
@@ -804,6 +918,10 @@
             "method": "POST",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Content-Type",
                 "value": "application/json"
               }
@@ -838,6 +956,10 @@
             "method": "POST",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               }
@@ -861,7 +983,12 @@
           "name": "E009 GET /api/users/exists?login={{loginA}}",
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
             "url": "{{user}}/api/users/exists?login={{loginA}}",
             "description": "\n{\"exists\":true}; новый незанятый логин → false\nИсточник: services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
           },
@@ -882,6 +1009,10 @@
           "request": {
             "method": "GET",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
@@ -908,6 +1039,10 @@
             "method": "GET",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               }
@@ -932,6 +1067,10 @@
           "request": {
             "method": "GET",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenAdmin}}"
@@ -958,6 +1097,10 @@
             "method": "GET",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               }
@@ -982,6 +1125,10 @@
           "request": {
             "method": "GET",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
@@ -1008,6 +1155,10 @@
             "method": "GET",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenAdmin}}"
               }
@@ -1033,6 +1184,10 @@
             "method": "GET",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenAdmin}}"
               }
@@ -1057,6 +1212,10 @@
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenAdmin}}"
@@ -1096,6 +1255,10 @@
             "method": "POST",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenAdmin}}"
               }
@@ -1126,6 +1289,10 @@
             "method": "GET",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               }
@@ -1150,6 +1317,10 @@
           "request": {
             "method": "GET",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenAdmin}}"
@@ -1176,6 +1347,10 @@
             "method": "GET",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenAdmin}}"
               }
@@ -1200,6 +1375,10 @@
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenAdmin}}"
@@ -1239,6 +1418,10 @@
             "method": "POST",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenAdmin}}"
               }
@@ -1269,6 +1452,10 @@
             "method": "GET",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               }
@@ -1293,6 +1480,10 @@
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
@@ -1332,6 +1523,10 @@
             "method": "GET",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               }
@@ -1356,6 +1551,10 @@
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "X-Service-Key",
                 "value": "{{serviceKey}}"
@@ -1395,6 +1594,10 @@
             "method": "POST",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "X-Service-Key",
                 "value": "{{serviceKey}}"
               },
@@ -1432,6 +1635,10 @@
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "X-Service-Key",
                 "value": "{{serviceKey}}"
@@ -1476,6 +1683,10 @@
             "method": "GET",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               }
@@ -1501,6 +1712,10 @@
             "method": "GET",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               }
@@ -1525,6 +1740,10 @@
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
@@ -1564,6 +1783,10 @@
             "method": "PUT",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               },
@@ -1601,6 +1824,10 @@
           "request": {
             "method": "PUT",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
@@ -1640,6 +1867,10 @@
             "method": "PUT",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               },
@@ -1677,6 +1908,10 @@
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
@@ -1716,12 +1951,41 @@
             "method": "GET",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               }
             ],
             "url": "{{ride}}/api/rides/{{rideId}}",
             "description": "\nОдна своя поездка; B → 403\nИсточник: services/ride/src/main/java/ru/itis/servlet/RideServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E060 GET /api/reviews?limit=20&offset=0",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{ride}}/api/reviews?limit=20&offset=0",
+            "description": "Нужна миграция отзывов 002; пустой список допустим\nПубличный массив оценок, комментариев и reviewedAt; нет userId, rideId, логинов, сумм и координат\nИсточник: services/ride/src/main/java/ru/itis/servlet/PublicReviewServlet.java"
           },
           "event": [
             {
@@ -1745,6 +2009,10 @@
           "request": {
             "method": "POST",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
@@ -1784,6 +2052,10 @@
             "method": "GET",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               }
@@ -1808,6 +2080,10 @@
           "request": {
             "method": "GET",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
@@ -1834,6 +2110,10 @@
             "method": "GET",
             "header": [
               {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"
               }
@@ -1858,6 +2138,10 @@
           "request": {
             "method": "DELETE",
             "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
               {
                 "key": "Authorization",
                 "value": "Bearer {{tokenA}}"

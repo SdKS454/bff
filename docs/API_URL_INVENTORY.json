@@ -1,5 +1,5 @@
 {
-  "revision": "4f64344",
+  "revision": "a460d8a",
   "ports": {
     "BFF": 8080,
     "User": 8081,
@@ -778,6 +778,30 @@
       "expected": "Резервация закрыта, самокат освобождён",
       "pre": "Только отдельный тестовый самокат и отдельный UUID, не связанный с настоящей Ride-поездкой; порядок reserve → position → release",
       "source": "services/scooter/src/main/java/ru/itis/servlet/ScooterServlet.java"
+    },
+    {
+      "id": "E059",
+      "service": "BFF",
+      "method": "GET",
+      "url": "http://localhost:8080/api/reviews?limit=20&offset=0",
+      "auth": "Нет",
+      "body": null,
+      "status": 200,
+      "expected": "Публичный массив оценок, комментариев и reviewedAt; нет userId, rideId, логинов, сумм и координат",
+      "pre": "Нужна миграция отзывов 002; пустой список допустим",
+      "source": "src/main/java/bff/servlet/PublicReviewProxyServlet.java"
+    },
+    {
+      "id": "E060",
+      "service": "Ride",
+      "method": "GET",
+      "url": "http://localhost:8084/api/reviews?limit=20&offset=0",
+      "auth": "Нет",
+      "body": null,
+      "status": 200,
+      "expected": "Публичный массив оценок, комментариев и reviewedAt; нет userId, rideId, логинов, сумм и координат",
+      "pre": "Нужна миграция отзывов 002; пустой список допустим",
+      "source": "services/ride/src/main/java/ru/itis/servlet/PublicReviewServlet.java"
     }
   ]
 }

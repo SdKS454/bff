@@ -1,0 +1,32 @@
+Обновление поверх 930306f. Код a460d8a, ветка temp/reviews-validation.
+
+25 рабочих файлов для замены/добавления:
+services/documents/src/main/java/ru/kicksharing/documents/servlet/DocumentServlet.java
+services/documents/src/main/java/ru/kicksharing/documents/util/BrowserNavigation.java
+services/moderation/src/main/java/ru/itis/controller/ErrorServlet.java
+services/moderation/src/main/java/ru/itis/security/AuthFilter.java
+services/moderation/src/main/java/ru/itis/util/BrowserNavigation.java
+services/ride/src/main/java/ru/itis/filter/AuthFilter.java
+services/ride/src/main/java/ru/itis/model/PublicReview.java
+services/ride/src/main/java/ru/itis/repository/impl/PublicReviewRepository.java
+services/ride/src/main/java/ru/itis/servlet/PublicReviewServlet.java
+services/ride/src/main/java/ru/itis/util/BrowserNavigation.java
+services/scooter/src/main/java/ru/itis/filter/AuthFilter.java
+services/scooter/src/main/java/ru/itis/util/BrowserNavigation.java
+services/user/src/main/java/ru/scooter/user/filter/ErrorFilter.java
+services/user/src/main/java/ru/scooter/user/util/BrowserNavigation.java
+src/main/java/bff/filter/JwtAuthFilter.java
+src/main/java/bff/service/impl/RideServiceRestImpl.java
+src/main/java/bff/servlet/AuthEntryServlet.java
+src/main/java/bff/servlet/FrontendConfigServlet.java
+src/main/java/bff/servlet/PublicReviewProxyServlet.java
+src/main/java/bff/web/BrowserNavigation.java
+src/main/webapp/frontend/account.js
+src/main/webapp/frontend/script.js
+src/main/webapp/frontend/style.css
+src/main/webapp/index.jsp
+src/main/webapp/login.jsp
+
+Копировать с объединением каталогов, local-run сохранить. Пересобрать и перезапустить все шесть сервисов.
+Новых SQL-миграций и переменных окружения нет; прежняя 002_reviews.sql должна быть применена.
+См. docs/PUBLIC_REVIEWS_AND_ACCESS.md.
