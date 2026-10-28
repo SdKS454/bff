@@ -34,7 +34,7 @@ public final class BrowserTestServer {
     }
     static String ride() {
         return "{\"id\":\"" + RIDE + "\",\"userId\":\"" + USER + "\",\"numberPlate\":" + JsonText.quote(plate())
-                + ",\"status\":" + JsonText.quote(rideState) + ",\"startedAt\":" + JsonText.quote(Instant.now().minusSeconds(120).toString())
+                + ",\"startPosX\":10,\"startPosY\":24,\"status\":" + JsonText.quote(rideState) + ",\"startedAt\":" + JsonText.quote(Instant.now().minusSeconds(120).toString())
                 + (rideState.equals("ACTIVE") ? "" : ",\"finishedAt\":" + JsonText.quote(Instant.now().toString()) + ",\"durationSeconds\":120,\"amount\":123.45,\"currency\":\"RUB\"") + (reviewJson == null ? "" : ",\"review\":" + reviewJson) + "}";
     }
     static void send(HttpExchange e, int code, String type, String body) throws IOException {

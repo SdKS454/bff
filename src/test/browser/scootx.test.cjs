@@ -241,12 +241,15 @@ test('GPS automatically queries nearest with longitude X and latitude Y, no manu
  assert.equal(await page.locator('[name="posX"],[name="posY"]').count(),0);
  await startRide();assert.doesNotMatch(await page.locator('body').innerText(),/Учебный режим|Учебная оплата/);
 });
-test('denied geolocation shows actionable error and never requests nearest with invented coordinates',async()=>{
+test('denied geolocation shows real catalog without distance or invented nearest requests',async()=>{
  await context.addInitScript(()=>Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok,fail){fail({code:1});}}}));
  await login();
  assert.match(await page.locator('#catalog-message').innerText(),/Разрешите доступ/);
  assert.equal((await calls()).filter(c=>c.path==='/api/scooters/nearest').length,0);
- assert.equal(await page.locator('.product').count(),0);
+ assert.equal(await page.locator('.product').count(),1);
+ assert.equal(await page.locator('.range-row').count(),0);
+ assert.equal(await page.locator('#retry-location').isVisible(),true);
+ assert.ok((await calls()).some(c=>c.path==='/api/scooters' && c.method==='GET'));
 });
 test('late GPS cannot start a ride after its form is closed',async()=>{
  await context.addInitScript(()=>Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok,fail,opts){setTimeout(()=>ok({coords:{longitude:37.6,latitude:55.7}}),opts.maximumAge===0?500:0);}}}));
@@ -292,4 +295,48 @@ test('finished ride review survives refresh, can be edited and renders comments 
   await page.locator('[name="rideComment"]').fill('Обновлённый отзыв');
   await page.locator('#review-ride-form [type="submit"]').click();
   assert.match(await page.locator('.ride-review').innerText(), /Обновлённый отзыв/);
+});
+
+test('location denial still permits a ride using the selected scooter position and confirmed saved finish', async () => {
+  await context.addInitScript(() => Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok,fail){fail({code:1});}}}));
+  await login();
+  const starts=[], finishes=[];
+  await page.route(/\/api\/rides$/,route=>{if(route.request().method()==='POST')starts.push(route.request().postDataJSON());return route.continue();});
+  await page.route('**/api/rides/*/finish',route=>{finishes.push(route.request().postDataJSON());return route.continue();});
+  await startRide();
+  assert.equal(starts.length,1);assert.deepEqual({posX:starts[0].posX,posY:starts[0].posY},{posX:10,posY:24});
+  await page.locator('[data-finish-ride]').click();
+  await page.locator('#finish-ride-form [type="submit"]').click();
+  await page.locator('[data-finish-saved]').waitFor();
+  assert.equal(finishes.length,0);
+  page.once('dialog',dialog=>dialog.dismiss());
+  await page.locator('[data-finish-saved]').click();
+  assert.equal(finishes.length,0);
+  page.once('dialog',dialog=>dialog.accept());
+  await page.locator('[data-finish-saved]').click();
+  await page.locator('[data-pay-ride]').waitFor();
+  assert.deepEqual(finishes,[{posX:10,posY:24}]);
+});
+test('location retry recovers nearby catalog after permission is granted', async () => {
+  await context.addInitScript(() => {
+    window.geoEnabled=false;
+    Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok,fail){window.geoEnabled ? ok({coords:{longitude:37.6,latitude:55.7}}) : fail({code:1});}}});
+  });
+  await login();await page.locator('.dialog-close').click();
+  await page.locator('#retry-location').waitFor();
+  await page.evaluate(()=>{window.geoEnabled=true;});
+  await page.locator('#retry-location').click();
+  await page.waitForFunction(()=>document.querySelector('#retry-location').hidden);
+  assert.match(await page.locator('#catalog-message').innerText(),/сначала ближайшие/);
+  assert.ok((await calls()).some(c=>c.path==='/api/scooters/nearest'));
+});
+test('unavailable location falls back to catalog while a catalog outage remains an error', async () => {
+  await context.addInitScript(() => Object.defineProperty(navigator,'geolocation',{value:{getCurrentPosition(ok,fail){fail({code:3});}}}));
+  await login();
+  assert.equal(await page.locator('.product').count(),1);
+  assert.match(await page.locator('#catalog-message').innerText(),/Истекло время/);
+  await settings({catalogStatus:503},true);
+  await page.locator('.dialog-close').click();await page.locator('#refresh-fleet').click();
+  await page.waitForFunction(()=>document.querySelector('#catalog-message').textContent.includes('503'));
+  assert.equal(await page.locator('.product').count(),0);
 });

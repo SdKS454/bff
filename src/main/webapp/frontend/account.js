@@ -1,13 +1,20 @@
 'use strict';
 (() => {
   const page = window.ScootxPage, service = window.ScootxApi;
-  const state = { user:null, rides:[], fleet:[], favorites:[], pendingStart:null, ridesError:'', documents:[], documentsLoaded:false, documentsError:'', documentsMore:false };
+  const state = { user:null, rides:[], fleet:[], favorites:[], pendingStart:null, ridesError:'', documents:[], documentsLoaded:false, documentsError:'', documentsMore:false, catalogMessage:'' };
   const $ = selector => document.querySelector(selector);
   const esc = page.escapeHtml;
   let refreshVersion = 0;
   let documentsVersion = 0;
   const finishPositions = new Map();
-  function publish(catalogMessage = '') {
+  let locationFailure = null;
+  class GeolocationError extends Error { }
+  function validPosition(x, y) {
+    return Number.isFinite(x) && Number.isFinite(y) && Math.abs(x) <= 180 && Math.abs(y) <= 90;
+  }
+  function publish(catalogMessage = state.catalogMessage || '') {
+    state.catalogMessage = catalogMessage;
+    $('#retry-location').hidden = !state.user || !locationFailure;
     page.setData({ user:state.user, rides:state.rides, favorites:state.favorites, fleet:state.fleet, catalogMessage });
     $('#account-label').textContent = state.user ? 'Личный кабинет' : 'Вход / Регистрация';
     $('#account-button').setAttribute('aria-label', state.user ? 'Открыть личный кабинет' : 'Вход и регистрация');
@@ -40,12 +47,13 @@
     if(state.user?.id!==user.id){finishPositions.clear();state.documents=[];state.documentsLoaded=false;state.documentsError='';state.documentsMore=false;}
     state.user = user; state.favorites = service.favorites(user.id);
     const [fleet, rides] = results;
-    let message = fleet.status === 'fulfilled' ? 'Свободные самокаты рядом с вами, сначала ближайшие.' : '';
-    const fleetValid = fleet.status === 'fulfilled' && Array.isArray(fleet.value) && fleet.value.every(s => s && typeof s.numberPlate === 'string');
-    state.fleet = fleetValid ? fleet.value : [];
+    const items = fleet.status === 'fulfilled' ? fleet.value.items : null;
+    let message = fleet.status === 'fulfilled' ? fleet.value.message : '';
+    const fleetValid = Array.isArray(items) && items.every(s => s && typeof s.numberPlate === 'string');
+    state.fleet = fleetValid ? items : [];
     if (fleet.status === 'rejected') message = fleet.reason.message;
     else if (!fleetValid) message = 'Некорректный список самокатов.';
-    else if (!fleet.value.length) message = 'Самокаты пока не найдены.';
+    else if (!items.length) message += ' Каталог пока пуст.';
     const ridesValid = rides.status === 'fulfilled' && Array.isArray(rides.value) && rides.value.every(r => r && typeof r.id === 'string' && typeof r.status === 'string');
     state.rides = ridesValid ? rides.value : [];
     state.ridesError = rides.status === 'rejected' ? rides.reason.message : !ridesValid ? 'Некорректная история поездок.' : '';
@@ -121,7 +129,7 @@
 
   }
   async function entry() { try { state.pendingStart = null; await refresh(); state.user ? account() : auth(); } catch (error) { handleError(error); } }
-  function coordinatesFields() { return '<p class="account-subtitle">Местоположение определится автоматически. Разрешите браузеру доступ к геолокации.</p>'; }
+  function coordinatesFields(start = false) { if(start)return '<p class="account-subtitle">Геолокация необязательна: без неё начнём поездку по позиции выбранного самоката из базы. При завершении потребуется определить или подтвердить сохранённую позицию.</p>'; return '<p class="account-subtitle">Местоположение определится автоматически. Разрешите браузеру доступ к геолокации.</p>'; }
 
   async function confirmStart(plate) {
     state.pendingStart = plate;
@@ -142,7 +150,7 @@
 
     } catch(error) { page.notify(error.message); return; }
     if(!state.user || state.pendingStart!==plate || !dialog.open || (origin && !origin.isConnected))return;
-    shell(`<button data-account-tab="rides" type="button">← Мои поездки</button><h2>Готов к движению?</h2>${page.plateHtml(plate)}<p class="booking-notice">${tariff} Запрос начнёт поездку.</p><form class="account-form" id="start-ride-form" data-plate="${esc(plate)}">${coordinatesFields()}<p class="form-error" role="alert" hidden></p><button class="account-submit" type="submit">Начать поездку</button></form>`, true);
+    shell(`<button data-account-tab="rides" type="button">← Мои поездки</button><h2>Готов к движению?</h2>${page.plateHtml(plate)}<p class="booking-notice">${tariff} Запрос начнёт поездку.</p><form class="account-form" id="start-ride-form" data-plate="${esc(plate)}">${coordinatesFields(true)}<p class="form-error" role="alert" hidden></p><button class="account-submit" type="submit">Начать поездку</button></form>`, true);
   }
   function confirmFinish(id) {
     const ride = state.rides.find(r => r.id === id);
@@ -157,31 +165,54 @@
   function coords(form) {
     const owner = state.user?.id;
     return new Promise((resolve, reject) => {
+      let settled = false;
+      let timer;
+      const complete = (error, position) => {
+        if (settled) return;
+        settled = true; clearTimeout(timer);
+        if (form && (!dialog.open || !form.isConnected || owner !== state.user?.id)) {
+          reject(new Error('Действие отменено.')); return;
+        }
+        if (error) { locationFailure = error; reject(error); }
+        else { locationFailure = null; resolve(position); }
+      };
       if (!window.isSecureContext || !navigator.geolocation) {
-        reject(new Error('Геолокация недоступна. Откройте сайт через localhost или HTTPS.'));
+        complete(new GeolocationError('Геолокация недоступна. Откройте сайт через localhost или HTTPS.'));
         return;
       }
-      navigator.geolocation.getCurrentPosition(position => {
-        if (form && (!dialog.open || !form.isConnected || owner !== state.user?.id)) {
-          reject(new Error('Действие отменено.'));
-          return;
-        }
-        const {longitude, latitude} = position.coords;
-        if (!Number.isFinite(longitude) || !Number.isFinite(latitude)
-            || Math.abs(longitude) > 180 || Math.abs(latitude) > 90) {
-          reject(new Error('Браузер вернул некорректное местоположение.'));
-          return;
-        }
-        resolve({posX: longitude, posY: latitude});
-      }, error => {
-        const messages = {
-          1: 'Разрешите доступ к местоположению в настройках сайта и повторите действие.',
-          2: 'Не удалось определить местоположение. Проверьте службу геолокации устройства.',
-          3: 'Истекло время определения местоположения. Повторите действие.'
-        };
-        reject(new Error(messages[error.code] || 'Не удалось определить местоположение.'));
-      }, {enableHighAccuracy: true, timeout: 15000, maximumAge: form ? 0 : 60000});
+      timer = setTimeout(() => complete(new GeolocationError('Истекло время определения местоположения. Повторите попытку.')), 16000);
+      try {
+        navigator.geolocation.getCurrentPosition(position => {
+          const {longitude, latitude} = position.coords || {};
+          if (!validPosition(longitude, latitude)) {
+            complete(new GeolocationError('Браузер вернул некорректное местоположение.')); return;
+          }
+          complete(null, {posX:longitude, posY:latitude});
+        }, error => {
+          const messages = {
+            1:'Доступ к геолокации запрещён. Разрешите доступ к местоположению в настройках сайта (значок рядом с адресом), проверьте службу геолокации устройства и повторите попытку.',
+            2:'Не удалось определить местоположение. Проверьте службу геолокации устройства и повторите попытку.',
+            3:'Истекло время определения местоположения. Повторите попытку.'
+          };
+          complete(new GeolocationError(messages[error.code] || 'Не удалось определить местоположение.'));
+        }, {enableHighAccuracy:true, timeout:15000, maximumAge:form ? 0 : 60000});
+      } catch (_) { complete(new GeolocationError('Геолокация недоступна. Проверьте разрешения браузера и устройства.')); }
     });
+  }
+  function savedRidePosition(id) {
+    const ride = state.rides.find(item => item.id === id);
+    if (!ride || ride.status !== 'ACTIVE') return null;
+    if (validPosition(ride.lastPosX, ride.lastPosY)) return {posX:ride.lastPosX, posY:ride.lastPosY};
+    if (validPosition(ride.startPosX, ride.startPosY)) return {posX:ride.startPosX, posY:ride.startPosY};
+    return null;
+  }
+  function showLocationHelp(form) {
+    if (form.querySelector('.location-help')) return;
+    const help = document.createElement('div'); help.className = 'location-help';
+    help.innerHTML = '<p class="account-subtitle">Разрешите геолокацию в настройках сайта и снова нажмите кнопку. Профиль, история, оплата и документы доступны без геолокации.</p>';
+    if (form.id === 'finish-ride-form' && savedRidePosition(form.dataset.rideId))
+      help.innerHTML += `<p class="booking-notice">Если определить местоположение не удаётся, можно завершить поездку по последней сохранённой позиции. Она может быть устаревшей.</p><button data-finish-saved="${esc(form.dataset.rideId)}" type="button">Завершить по сохранённой позиции</button>`;
+    form.append(help);
   }
   async function finishCoords(id, form) {
     const ride = state.rides.find(item => item.id === id);
@@ -189,11 +220,40 @@
     if (ride?.finishedAt && Number.isFinite(ride.endPosX) && Number.isFinite(ride.endPosY)) {
       return {posX: ride.endPosX, posY: ride.endPosY};
     }
-    if (!finishPositions.has(id)) finishPositions.set(id, await coords(form));
+    if (!finishPositions.has(id)) {
+      const position = form.dataset.savedPosition === 'true' ? savedRidePosition(id) : await coords(form);
+      if (!position) throw new Error('У поездки нет сохранённой позиции. Разрешите геолокацию и повторите попытку.');
+      finishPositions.set(id, position);
+    }
     return finishPositions.get(id);
   }
+  async function startCoords(form) {
+    const owner = state.user?.id;
+    try {
+      if (locationFailure) throw locationFailure;
+      return await coords(form);
+    } catch (error) {
+      if (!(error instanceof GeolocationError)) throw error;
+      const scooter = await service.request('/api/scooters/' + encodeURIComponent(form.dataset.plate));
+      if (!form.isConnected || !dialog.open || owner !== state.user?.id) throw new Error('Действие отменено.');
+      if (scooter?.status !== 'READY') throw new Error('Самокат сейчас недоступен. Обновите каталог.');
+      if (!validPosition(scooter.posX, scooter.posY)) throw new Error('У самоката не задана корректная позиция. Выберите другой самокат.');
+      return {posX:scooter.posX, posY:scooter.posY};
+    }
+  }
   async function loadNearbyScooters() {
-    return service.request('/api/scooters/nearest', 'POST', await coords());
+    let position;
+    try {
+      if (locationFailure) throw locationFailure;
+      position = await coords();
+    } catch (error) {
+      if (!(error instanceof GeolocationError)) throw error;
+      // This is the real service catalog, with no fabricated user coordinates or distances.
+      const list = await service.request('/api/scooters');
+      const items = Array.isArray(list) ? list.map(scooter => { if(!scooter || typeof scooter !== 'object')return scooter; const {distance, ...item} = scooter; return item; }) : list;
+      return {items, message:error.message + ' Показываем весь каталог без сортировки по расстоянию.'};
+    }
+    return {items:await service.request('/api/scooters/nearest', 'POST', position), message:'Свободные самокаты рядом с вами, сначала ближайшие.'};
   }
   async function submit(form) {
     if (form.dataset.submitting === 'true' || !form.reportValidity()) return;
@@ -218,7 +278,7 @@
         state.pendingStart ? confirmStart(state.pendingStart) : account();
         page.notify(register ? 'Аккаунт создан' : 'Ты вошёл в аккаунт');
       } else if (form.id === 'start-ride-form') {
-        await service.request('/api/rides', 'POST', {numberPlate:form.dataset.plate, ...(await coords(form))});
+        await service.request('/api/rides', 'POST', {numberPlate:form.dataset.plate, ...(await startCoords(form))});
         committed = 'Поездка начата'; state.pendingStart = null;
         await refresh(); if(dialog.open&&form.isConnected)account('rides'); page.notify(committed);
       } else if (form.id === 'position-ride-form') {
@@ -244,7 +304,7 @@
     } catch (e) {
       if (committed) { if(dialog.open&&form.isConnected)account('rides'); page.notify(committed + '. Не удалось обновить данные: ' + e.message); }
       else if (e.status === 401 && form.id !== 'auth-form') handleError(e);
-      else if (form.isConnected) { error.textContent = e.message; error.hidden = false; }
+      else if (form.isConnected) { error.textContent = e.message; error.hidden = false; if(e instanceof GeolocationError)showLocationHelp(form); }
       else page.notify(e.message);
     } finally { button.disabled = false; delete form.dataset.submitting; }
   }
@@ -252,7 +312,7 @@
     if (['auth-form','start-ride-form','finish-ride-form','position-ride-form','pay-ride-form','review-ride-form','history-document-form'].includes(event.target.id)) { event.preventDefault(); submit(event.target); }
   });
   document.addEventListener('click', async event => {
-    const action = event.target.closest('[data-auth-mode],[data-password-toggle],[data-account-tab],[data-start-ride],[data-finish-ride],[data-pay-ride],[data-review-ride],[data-unsave],[data-logout],[data-position-ride],[data-document-download],[data-document-delete],[data-document-retry],[data-documents-refresh],[data-documents-more],[data-receipt],[data-blocked-document]');
+    const action = event.target.closest('[data-auth-mode],[data-password-toggle],[data-account-tab],[data-start-ride],[data-finish-ride],[data-finish-saved],[data-pay-ride],[data-review-ride],[data-unsave],[data-logout],[data-position-ride],[data-document-download],[data-document-delete],[data-document-retry],[data-documents-refresh],[data-documents-more],[data-receipt],[data-blocked-document]');
     if (!action || action.disabled) return;
     try {
       if (action.hasAttribute('data-auth-mode')) { auth(action.dataset.authMode); return; }
@@ -264,6 +324,13 @@
       if (action.hasAttribute('data-account-tab')) { await refresh(); if(!dialog.open||!action.isConnected)return; if(action.dataset.accountTab==='documents')state.documentsLoaded=false;account(action.dataset.accountTab); }
       else if (action.hasAttribute('data-start-ride')) { await refresh(); if(dialog.open&&action.isConnected)confirmStart(action.dataset.startRide); }
       else if (action.hasAttribute('data-finish-ride')) { await refresh(); if(dialog.open&&action.isConnected)confirmFinish(action.dataset.finishRide); }
+      else if (action.hasAttribute('data-finish-saved')) {
+        const form = action.closest('#finish-ride-form'), position = savedRidePosition(action.dataset.finishSaved);
+        if (!form || form.dataset.submitting === 'true' || !position) return;
+        if (!window.confirm(`Завершить поездку по сохранённой позиции (долгота ${position.posX}, широта ${position.posY})? Она может отличаться от текущего местоположения.`)) return;
+        form.dataset.savedPosition = 'true';
+        try { await submit(form); } finally { delete form.dataset.savedPosition; }
+      }
       else if (action.hasAttribute('data-pay-ride')) { await refresh(); if(dialog.open&&action.isConnected)confirmPay(action.dataset.payRide); }
       else if (action.hasAttribute('data-review-ride')) { await refresh(); if(dialog.open&&action.isConnected)reviewForm(action.dataset.reviewRide); }
       else if (action.hasAttribute('data-unsave')) { state.favorites = service.setFavorite(state.user?.id, action.dataset.unsave, false); publish(); account('saved'); }
@@ -295,6 +362,10 @@
   $('#account-label').addEventListener('click', entry);
   $('#account-button').addEventListener('click', entry);
   $('#refresh-fleet').addEventListener('click', async () => { try { await refresh(); } catch (e) { handleError(e); } });
+  $('#retry-location').addEventListener('click', async event => {
+    const button = event.currentTarget; button.disabled = true; locationFailure = null;
+    try { await refresh(); } catch(error) { handleError(error); } finally { button.disabled = false; }
+  });
   setInterval(() => document.querySelectorAll('[data-elapsed]').forEach(el => { el.textContent = elapsed({status:'ACTIVE', startedAt:el.dataset.elapsed}); }), 1000);
   window.ScootxAccount = {open:entry, refresh, handleError, updateFavorites:items => { state.favorites = items; }};
   refresh().then(() => {
