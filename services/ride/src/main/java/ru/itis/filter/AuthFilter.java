@@ -33,12 +33,17 @@ public class AuthFilter implements Filter {
             throws IOException, ServletException {
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse resp = (HttpServletResponse) response;
+        if (ru.itis.util.BrowserNavigation.reject(req, resp)) return;
         req.setCharacterEncoding("UTF-8");
         resp.setCharacterEncoding("UTF-8");
         resp.setContentType("application/json");
         resp.setHeader("Cache-Control", "no-store");
         resp.setHeader("X-Content-Type-Options", "nosniff");
         try {
+            String publicPath = req.getRequestURI().substring(req.getContextPath().length());
+            if (req.getMethod().equals("GET") && publicPath.equals("/api/reviews")) {
+                chain.doFilter(req, resp); return;
+            }
             String authorization = req.getHeader("Authorization");
             if (authorization == null || !authorization.regionMatches(true,0,"Bearer ",0,7)) {
                 throw new ApiException(401, "Нужен Bearer JWT");

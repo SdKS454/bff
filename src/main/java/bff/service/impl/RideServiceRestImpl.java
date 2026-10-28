@@ -48,6 +48,10 @@ public class RideServiceRestImpl implements RideService {
         return send("GET", URI.create(BASE + "/api/rides?userId=" + userId), jwt, null);
     }
 
+    public JsonResponse reviews(int limit, int offset) {
+        return send("GET", URI.create(BASE + "/api/reviews?limit=" + limit + "&offset=" + offset), null, null);
+    }
+
     public JsonResponse rates(String jwt) { return send("GET",URI.create(BASE+"/api/rates"),jwt,null); }
 
     private String toJson(StartRideRequest request) {

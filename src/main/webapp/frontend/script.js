@@ -17,6 +17,54 @@ const dateLabel = value => Number.isFinite(Date.parse(value)) ? new Date(value).
 const chargeValue = scooter => finite(scooter?.charge) ? Math.min(100, Math.max(0, scooter.charge)) : null;
 const chargeLabel = scooter => chargeValue(scooter) === null ? 'Нет данных' : chargeValue(scooter) + '%';
 let toastTimer;
+let reviewLoadVersion = 0;
+function reviewHtml(review) {
+  const stars = '★'.repeat(review.rideRating) + '☆'.repeat(5 - review.rideRating);
+  return `<article class="review user-review"><div class="review-copy"><div class="stars" aria-label="Оценка поездки ${review.rideRating} из 5">${stars}</div><h3>Пользователь ScootX</h3><small>${escapeHtml(dateLabel(review.reviewedAt))}</small><div class="quote"><h4>Поездка: ${review.rideRating}/5</h4><p>${escapeHtml(review.rideComment || 'Без комментария')}</p><h4>Самокат: ${review.scooterRating}/5</h4><p>${escapeHtml(review.scooterComment || 'Без комментария')}</p></div></div></article>`;
+}
+async function reviewPage(limit, offset) {
+  const items = await window.ScootxApi.request('/api/reviews?limit=' + limit + '&offset=' + offset);
+  if (!Array.isArray(items) || items.length > limit || !items.every(item => item
+      && [item.rideRating,item.scooterRating].every(n => Number.isInteger(n) && n >= 1 && n <= 5)
+      && [item.rideComment,item.scooterComment].every(text => text === null || typeof text === 'string' && text.length <= 1000)
+      && typeof item.reviewedAt === 'string' && Number.isFinite(Date.parse(item.reviewedAt))))
+    throw new Error('Сервис вернул некорректные отзывы.');
+  return items;
+}
+async function refreshReviews() {
+  const version = ++reviewLoadVersion;
+  const grid = document.getElementById('review-grid'), message = document.getElementById('reviews-message');
+  message.textContent = 'Загружаем отзывы…';
+  try {
+    const items = await reviewPage(2, 0);
+    if (version !== reviewLoadVersion) return;
+    grid.innerHTML = items.map(reviewHtml).join('');
+    message.textContent = items.length ? '' : 'Отзывов пока нет. Оставьте первый после завершения поездки.';
+  } catch(error) {
+    if (version !== reviewLoadVersion) return;
+    grid.innerHTML = ''; message.textContent = 'Не удалось загрузить отзывы. ' + error.message;
+  }
+  if (version === reviewLoadVersion)
+    document.querySelectorAll('[data-review-direction]').forEach(button => { button.disabled = grid.children.length < 2; });
+}
+async function loadReviewDialog(list, reset = false) {
+  if (!list.isConnected || !dialog.open || list.dataset.loading === 'true') return;
+  list.dataset.loading = 'true';
+  const container = list.parentElement, more = container.querySelector('[data-more-reviews]'), message = container.querySelector('[data-reviews-message]');
+  more.disabled = true; message.textContent = 'Загружаем отзывы…';
+  const offset = reset ? 0 : Number(list.dataset.offset || 0);
+  try {
+    const items = await reviewPage(20, offset);
+    if (!list.isConnected || !dialog.open) return;
+    if (reset) list.innerHTML = '';
+    list.insertAdjacentHTML('beforeend', items.map(reviewHtml).join(''));
+    list.dataset.offset = String(offset + items.length);
+    more.hidden = items.length < 20;
+    message.textContent = list.children.length ? '' : 'Отзывов пока нет. Оставьте первый после завершения поездки.';
+  } catch(error) {
+    if (list.isConnected) message.textContent = 'Не удалось загрузить отзывы. ' + error.message;
+  } finally { delete list.dataset.loading; more.disabled = false; }
+}
 function plateLabel(value) {
   const alphabet = {A:'А',B:'В',E:'Е',K:'К',M:'М',H:'Н',O:'О',P:'Р',C:'С',T:'Т',Y:'У',X:'Х'};
   return String(value || '').replace(/[ABEKMHOPCTYX]/g, c => alphabet[c]);
@@ -83,15 +131,23 @@ document.addEventListener('click', async event => {
   const direction = event.target.closest('[data-review-direction]');
   if (direction) {
     const grid = document.getElementById('review-grid');
-    Number(direction.dataset.reviewDirection) > 0 ? grid.append(grid.firstElementChild) : grid.prepend(grid.lastElementChild); return;
+    if(grid.children.length > 1)Number(direction.dataset.reviewDirection) > 0 ? grid.append(grid.firstElementChild) : grid.prepend(grid.lastElementChild); return;
   }
   const gallery = event.target.closest('.gallery-photo');
   if (gallery) openDialog(`<h2>Моменты в движении</h2><div class="dialog-gallery crop" data-crop="${escapeHtml(gallery.dataset.crop)}" role="img" aria-label="Фотография ScootX"></div>`);
 });
 document.getElementById('view-all').addEventListener('click', () => { viewState.showAll = !viewState.showAll; renderFleet(); });
+document.getElementById('refresh-reviews').addEventListener('click', refreshReviews);
 document.getElementById('all-reviews').addEventListener('click', () => {
-  const reviews = [...document.querySelectorAll('.review')];
-  openDialog(`<h2>Отзывы о поездках</h2><div class="dialog-reviews">${reviews.map(r => `<article><span class="stars">★★★★★</span><h3>${escapeHtml(r.querySelector('h3').textContent)}</h3><p>${escapeHtml(r.querySelector('.quote p').textContent)}</p></article>`).join('')}</div>`);
+  openDialog('<section><h2>Отзывы о поездках и самокатах</h2><p data-reviews-message role="status"></p><div class="dialog-reviews" id="public-review-list" data-offset="0"></div><button type="button" data-more-reviews>Показать ещё</button> <button type="button" data-reload-reviews>Обновить отзывы</button></section>');
+  loadReviewDialog(document.getElementById('public-review-list'), true);
+});
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-more-reviews],[data-reload-reviews]');
+  if (button && !button.disabled) {
+    const list = dialog.querySelector('#public-review-list');
+    if (list) loadReviewDialog(list, button.hasAttribute('data-reload-reviews'));
+  }
 });
 document.querySelector('.dialog-close').addEventListener('click', () => dialog.close());
 dialog.addEventListener('close', () => { if(dialog.open)return; document.body.style.overflow = ''; dialog.classList.remove('account-dialog'); });
@@ -100,4 +156,6 @@ dialog.addEventListener('click', event => {
 });
 document.querySelectorAll('.nav a').forEach(link => link.addEventListener('click', () => document.querySelectorAll('.nav a').forEach(other => other.classList.toggle('active', other === link))));
 cropImages(); renderFleet();
-window.ScootxPage = { setData:setPageData, openDialog, notify, plateLabel, plateHtml, photoCrop, escapeHtml, dateLabel, money, coordinate, chargeLabel, rideStatuses, scooterStatuses };
+window.ScootxPage = { refreshReviews, setData:setPageData, openDialog, notify, plateLabel, plateHtml, photoCrop, escapeHtml, dateLabel, money, coordinate, chargeLabel, rideStatuses, scooterStatuses };
+
+refreshReviews();

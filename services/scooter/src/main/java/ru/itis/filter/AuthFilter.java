@@ -15,6 +15,7 @@ public class AuthFilter implements Filter {
  private static final HttpClient CLIENT=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
  @Override public void doFilter(ServletRequest request,ServletResponse response,FilterChain chain)throws IOException,ServletException {
   var req=(HttpServletRequest)request;var resp=(HttpServletResponse)response;
+        if (ru.itis.util.BrowserNavigation.reject(req, resp)) return;
   resp.setHeader("Cache-Control","no-store");resp.setHeader("X-Content-Type-Options","nosniff");
   try {
    String path=req.getRequestURI().substring(req.getContextPath().length());

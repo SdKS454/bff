@@ -77,7 +77,8 @@ class BffIT {
         calls.add(new Call(e.getRequestMethod(), path, e.getRequestURI().getRawQuery(), e.getRequestHeaders().getFirst("Authorization"), body));
         int status = 200;
         String result = "{}";
-        if (path.endsWith("/validate")) status = validateStatus;
+        if (path.equals("/api/reviews")) { status = rideStatus; result = "[]"; }
+        else if (path.endsWith("/validate")) status = validateStatus;
         else if (path.equals("/api/users/login")) { status = loginStatus; result = loginBody; }
         else if (path.equals("/api/users/logout")) { status = logoutStatus; result = "{\"error\":\"Logout unavailable\"}"; }
         else if (path.equals("/api/users/register")) { status = 201; result = profile; }
@@ -131,7 +132,7 @@ class BffIT {
         for (String page : List.of("/login.jsp", "/register.jsp", "/main.jsp")) {
             response = request("GET", page, null, null);
             assertEquals(302, response.statusCode());
-            assertTrue(response.headers().firstValue("Location").orElseThrow().startsWith("/scooter-bff/?"));
+            assertTrue(response.headers().firstValue("Location").orElseThrow().startsWith(page.equals("/login.jsp") ? "/scooter-bff/auth/entry" : "/scooter-bff/?"));
         }
     }
     @Test void publicRegistrationDropsClientRole() throws Exception {
@@ -385,5 +386,41 @@ class BffIT {
                 .POST(HttpRequest.BodyPublishers.ofString("{}"));
         assertEquals(415, client.send(builder.build(), HttpResponse.BodyHandlers.ofString()).statusCode());
         assertFalse(called("/api/users/login"));
+    }
+    @Test void publicReviewsNeverRequireOrForwardAUserToken() throws Exception {
+        validateStatus = 503;
+        var response = request("GET", "/api/reviews?limit=2&offset=0", null, null);
+        assertEquals(200, response.statusCode()); assertEquals("[]", response.body());
+        assertFalse(called("/api/users/validate"));
+        assertNull(last("/api/reviews").authorization());
+        assertEquals("limit=2&offset=0", last("/api/reviews").query());
+    }
+    @Test void publicReviewPagingIsBoundedAndErrorsAreVisible() throws Exception {
+        for (String query : List.of("limit=0", "limit=101", "offset=-1", "offset=2147483648", "limit=x"))
+            assertEquals(400, request("GET", "/api/reviews?" + query, null, null).statusCode());
+        assertFalse(called("/api/reviews"));
+        rideStatus = 503;
+        assertEquals(503, request("GET", "/api/reviews", null, null).statusCode());
+        assertEquals(401, request("POST", "/api/reviews", "{}", null).statusCode());
+        assertEquals(401, request("GET", "/api/reviews/private", null, null).statusCode());
+    }
+    @Test void loginEntryPreservesUserAndAdminSessionsWithoutRevokingTokens() throws Exception {
+        assertEquals("/scooter-bff/?auth=login", request("GET", "/auth/entry", null, null).headers().firstValue("Location").orElseThrow());
+        request("POST", "/api/auth/login", "{\"login\":\"ivan\",\"password\":\"password\"}", null);
+        assertEquals("/scooter-bff/?account=profile", request("GET", "/auth/entry", null, null).headers().firstValue("Location").orElseThrow());
+        assertFalse(called("/api/users/logout"));
+        profile = profile.replace("USER", "ADMIN");
+        assertEquals("https://moderation.example/panel/#accessToken=jwt-test", request("GET", "/auth/entry", null, null).headers().firstValue("Location").orElseThrow());
+        assertFalse(called("/api/users/logout"));
+    }
+    @Test void addressBarApiNavigationIsHtmlButApiClientsKeepTheirPermissions() throws Exception {
+        var browser = HttpRequest.newBuilder(URI.create(base + "/api/users/me"))
+                .header("Accept", "text/html").GET().build();
+        var response = client.send(browser, HttpResponse.BodyHandlers.ofString());
+        assertEquals(403, response.statusCode()); assertTrue(response.headers().firstValue("Content-Type").orElseThrow().startsWith("text/html"));
+        assertTrue(response.body().contains("Служебный адрес"));
+        assertFalse(called("/api/users/me"));
+        assertEquals(401, request("GET", "/api/users/me", null, null).statusCode());
+        assertEquals(200, request("GET", "/api/users/me", null, "Bearer t").statusCode());
     }
 }

@@ -37,6 +37,7 @@ public class AuthFilter implements Filter {
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse resp = (HttpServletResponse) response;
 
+        if (ru.itis.util.BrowserNavigation.reject(req, resp)) return;
         String method = req.getMethod();
         String path = req.getServletPath() + (req.getPathInfo() == null ? "" : req.getPathInfo());
 

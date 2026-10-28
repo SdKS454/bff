@@ -10,7 +10,8 @@ import java.net.URI;
 @WebServlet(value = "/api/config", loadOnStartup = 1)
 public class FrontendConfigServlet extends BaseServlet {
     private String moderationPanelUrl;
-    @Override public void init() throws ServletException {
+    @Override public void init() throws ServletException { moderationPanelUrl = configuredUrl(); }
+    public static String configuredUrl() throws ServletException {
         String value = System.getProperty("moderation.panel.url");
         if (value == null || value.isBlank()) value = System.getenv("MODERATION_PANEL_URL");
         if (value == null || value.isBlank()) value = "http://localhost:8082/admin/users.html";
@@ -19,7 +20,7 @@ public class FrontendConfigServlet extends BaseServlet {
             if (!("https".equals(uri.getScheme()) || "http".equals(uri.getScheme()))
                     || uri.getHost() == null || uri.getUserInfo() != null || uri.getFragment() != null)
                 throw new IllegalArgumentException();
-            moderationPanelUrl = uri.toASCIIString();
+            return uri.toASCIIString();
         } catch (IllegalArgumentException e) {
             throw new ServletException("moderation.panel.url must be an absolute HTTP(S) URL without credentials or fragment", e);
         }

@@ -857,3 +857,8 @@ dialog::backdrop {
   opacity: 1;
   transform: translate(-50%, 0);
 }
+
+.review.user-review { min-height: 0; align-items: stretch; }
+.review.user-review .review-copy { width: 100%; max-width: 100%; padding: 28px; }
+.review.user-review .quote p { white-space: pre-wrap; overflow-wrap: anywhere; }
+#reviews-message { margin: 16px 0; }

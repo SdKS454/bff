@@ -73,11 +73,9 @@
 
     <section class="section reviews" id="support" aria-labelledby="reviews-title">
       <div class="section-heading centered"><h2 id="reviews-title">Для тех, кто в движении.<span>С любовью к городу.</span></h2><p>По делам, на встречу или просто навстречу новому дню.<br>Вот что рассказывают о своих поездках наши пользователи.</p></div>
-      <div class="review-grid" id="review-grid">
-        <article class="review"><div class="review-copy"><div class="review-avatar crop" data-crop="190,6500,110,110"></div><div class="stars" aria-label="Оценка: пять из пяти">★★★★★</div><h3>Марк Рид</h3><small>Пользователь ScootX</small><div class="quote"><h4>Удобно каждый день</h4><p>«Самокат отзывчивый, устойчивый и комфортный. Поездки со ScootX полностью изменили то, как я передвигаюсь по городу».</p></div></div><div class="review-picture crop" data-crop="615,6480,406,714" role="img" aria-label="Поездка на городском электросамокате"></div></article>
-        <article class="review"><div class="review-copy"><div class="review-avatar crop" data-crop="1095,6515,110,110"></div><div class="stars" aria-label="Оценка: пять из пяти">★★★★★</div><h3>Даниил Картер</h3><small>Пользователь ScootX</small><div class="quote"><h4>Город стал ближе</h4><p>«Очень плавный ход и удобный разгон для городских поездок. Пользуюсь ScootX почти каждый день и доволен выбором».</p></div></div><div class="review-picture crop" data-crop="1520,6480,405,714" role="img" aria-label="Пользователь на электросамокате"></div></article>
-      </div>
-      <div class="carousel-controls"><button class="square previous" data-review-direction="-1" type="button" aria-label="Предыдущий отзыв">←</button><button class="square dark" data-review-direction="1" type="button" aria-label="Следующий отзыв">→</button><div class="progress"><span></span></div><button class="split dark push-right" id="all-reviews" type="button"><span>Все отзывы</span><b>→</b></button></div>
+      <p id="reviews-message" role="status">Загружаем отзывы…</p>
+      <div class="review-grid" id="review-grid"></div>
+      <div class="carousel-controls"><button class="square previous" data-review-direction="-1" type="button" aria-label="Предыдущий отзыв">←</button><button class="square dark" data-review-direction="1" type="button" aria-label="Следующий отзыв">→</button><div class="progress"><span></span></div><button type="button" id="refresh-reviews">Обновить отзывы</button><button class="split dark push-right" id="all-reviews" type="button"><span>Все отзывы</span><b>→</b></button></div>
     </section>
 
     <section class="section social" aria-label="Галерея поездок ScootX">

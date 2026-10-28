@@ -18,6 +18,7 @@ public final class ErrorFilter implements Filter {
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
         HttpServletResponse resp = (HttpServletResponse) response;
+        if (ru.scooter.user.util.BrowserNavigation.reject((HttpServletRequest) request, resp)) return;
         resp.setHeader("X-Content-Type-Options", "nosniff");
         resp.setHeader("Referrer-Policy", "no-referrer");
         resp.setHeader(

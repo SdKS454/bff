@@ -340,3 +340,70 @@ test('unavailable location falls back to catalog while a catalog outage remains 
   await page.waitForFunction(()=>document.querySelector('#catalog-message').textContent.includes('503'));
   assert.equal(await page.locator('.product').count(),0);
 });
+
+test('public homepage uses saved reviews, including edits, and escapes their comments', async () => {
+  await login();await startRide();await finishRide();
+  await page.locator('[data-review-ride]').click();
+  await page.locator('[name="rideRating"]').selectOption('3');
+  await page.locator('[name="scooterRating"]').selectOption('4');
+  await page.locator('[name="rideComment"]').fill('Публичный отзыв <img src=x onerror=alert(1)>');
+  await page.locator('[name="scooterComment"]').fill('Хороший самокат');
+  await page.locator('#review-ride-form [type="submit"]').click();await page.locator('.ride-review').waitFor();
+  await page.locator('.dialog-close').click();
+  assert.match(await page.locator('#review-grid').innerText(),/Публичный отзыв/);
+  assert.match(await page.locator('#review-grid').innerText(),/Поездка: 3\/5/);
+  assert.equal(await page.locator('#review-grid img').count(),0);
+  await page.locator('#account-button').click();await page.locator('.profile-data').waitFor();await page.locator('.account-nav [data-account-tab="rides"]').click();
+  await page.locator('[data-review-ride]').click();await page.locator('[name="rideComment"]').fill('Изменённый публичный отзыв');
+  await page.locator('#review-ride-form [type="submit"]').click();await page.locator('.ride-review').waitFor();await page.locator('.dialog-close').click();
+  assert.match(await page.locator('#review-grid').innerText(),/Изменённый публичный отзыв/);
+  await page.locator('#account-button').click();await page.locator('[data-logout]').click();
+  await page.locator('#auth-form').waitFor();await page.reload();
+  await page.waitForFunction(()=>document.querySelector('#review-grid').textContent.includes('Изменённый публичный отзыв'));
+  assert.doesNotMatch(await page.locator('#review-grid').innerText(),/Иван Петров|Марк Рид|Даниил Картер/);
+});
+test('public reviews have empty and failure states with retry, not demonstration content', async () => {
+  await page.goto(base);await page.waitForFunction(()=>document.querySelector('#reviews-message').textContent.includes('Отзывов пока нет'));
+  assert.equal(await page.locator('#review-grid .review').count(),0);
+  await settings({reviewsStatus:503},true);await page.locator('#refresh-reviews').click();
+  await page.waitForFunction(()=>document.querySelector('#reviews-message').textContent.includes('Не удалось'));
+  await settings({reviewsStatus:200,publicReviews:[{rideRating:4,scooterRating:5,rideComment:'После повтора',scooterComment:'',reviewedAt:'2026-10-28T10:00:00Z'}]},true);
+  await page.locator('#refresh-reviews').click();await page.locator('#review-grid .review').waitFor();
+  assert.match(await page.locator('#review-grid').innerText(),/После повтора/);
+});
+test('all reviews paginate and a late response cannot reopen a closed dialog', async () => {
+  const publicReviews=Array.from({length:21},(_,i)=>({rideRating:5,scooterRating:4,rideComment:'Отзыв '+i,scooterComment:'',reviewedAt:'2026-10-28T10:00:00Z'}));
+  await settings({publicReviews});await page.goto(base);
+  await page.locator('#all-reviews').click();await page.waitForFunction(()=>document.querySelector('#public-review-list')?.children.length===20);
+  await page.locator('[data-more-reviews]').click();await page.waitForFunction(()=>document.querySelector('#public-review-list')?.children.length===21);
+  assert.equal(await page.locator('[data-more-reviews]').isHidden(),true);
+  await page.locator('.dialog-close').click();
+  await page.route('**/api/reviews?limit=20&offset=0',async route=>{await new Promise(resolve=>setTimeout(resolve,300));await route.continue();});
+  await page.locator('#all-reviews').click();await page.locator('.dialog-close').click();await page.waitForTimeout(500);
+  assert.equal(await page.locator('#details').evaluate(d=>d.open),false);
+});
+
+test('opening login.jsp with a valid USER session preserves login and shows profile', async () => {
+  await login();await page.goto(base+'login.jsp');await page.locator('.profile-data').waitFor();
+  assert.equal(await page.locator('#auth-form').count(),0);
+  assert.equal((await calls()).filter(c=>c.path==='/api/users/logout').length,0);
+  await page.goto(base+'?auth=login');await page.locator('.profile-data').waitFor();
+  assert.equal(await page.locator('#auth-form').count(),0);
+});
+test('ADMIN entry reuses the BFF session to enter Moderation after its local token is cleared', async () => {
+  await settings({role:'ADMIN'});await openAuth();
+  await page.locator('[name="login"]').fill('admin');await page.locator('[name="password"]').fill('password123');
+  await page.locator('#auth-form [type="submit"]').click();await page.waitForURL('**/admin/users.html#accessToken=*');
+  await page.goto(base+'login.jsp');await page.waitForURL('**/admin/users.html#accessToken=*');
+  assert.equal((await calls()).filter(c=>c.path==='/api/users/logout').length,0);
+});
+
+test('address bar API navigation shows a service page and never user JSON', async () => {
+  await login();
+  const response=await page.goto(base+'api/users/me');
+  assert.equal(response.status(),403);
+  assert.match(await page.locator('h1').innerText(),/служебный адрес/i);
+  assert.doesNotMatch(await page.locator('body').innerText(),/Иван Петров|birthDate|accessToken/);
+  await page.goto(base);await page.locator('.product').first().waitFor();
+  assert.equal(await page.evaluate(async()=>{const r=await fetch(document.body.dataset.ctx+'/api/users/me');return r.status;}),200);
+});

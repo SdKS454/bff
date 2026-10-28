@@ -15,6 +15,7 @@ public class DocumentServlet extends HttpServlet {
     private final DocumentService documentService = new DocumentService();
 
     @Override protected void service(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        if (ru.kicksharing.documents.util.BrowserNavigation.reject(req, resp)) return;
         resp.setHeader("Cache-Control", "no-store");
         resp.setHeader("X-Content-Type-Options", "nosniff");
         String path=req.getPathInfo()==null?"":req.getPathInfo();

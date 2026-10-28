@@ -18,6 +18,7 @@ public class ErrorServlet extends HttpServlet {
 
     @Override
     protected void service(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        if (ru.itis.util.BrowserNavigation.reject(req, resp)) return;
         Integer code = (Integer) req.getAttribute(RequestDispatcher.ERROR_STATUS_CODE);
         Throwable exception = (Throwable) req.getAttribute(RequestDispatcher.ERROR_EXCEPTION);
 

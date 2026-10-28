@@ -63,7 +63,21 @@ public final class BrowserTestServer {
         if (path.equals("/admin/users.html")) { send(e, 200, "text/html", "<!doctype html><title>Moderation</title><h1>Moderation test panel</h1>"); return; }
         calls.add(Json.createObjectBuilder().add("method", method).add("path", path).build());
         int code = 200; String result = "{}";
-        if (path.equals("/api/users/validate")) code = revoked ? 401 : status("validateStatus", 204);
+        if (path.equals("/api/reviews")) {
+            code = status("reviewsStatus", 200);
+            JsonArray items = fixture.containsKey("publicReviews") ? fixture.getJsonArray("publicReviews")
+                    : reviewJson == null ? Json.createArrayBuilder().build() : Json.createArrayBuilder().add(JsonText.object(reviewJson)).build();
+            String query = e.getRequestURI().getRawQuery(); int limit = 20, offset = 0;
+            if (query != null) for (String part : query.split("&")) {
+                String[] pair = part.split("=", 2);
+                if (pair[0].equals("limit")) limit = Integer.parseInt(pair[1]);
+                if (pair[0].equals("offset")) offset = Integer.parseInt(pair[1]);
+            }
+            var page = Json.createArrayBuilder();
+            for (int i = offset; i < Math.min(items.size(), offset + limit); i++) page.add(items.get(i));
+            result = page.build().toString();
+        }
+        else if (path.equals("/api/users/validate")) code = revoked ? 401 : status("validateStatus", 204);
         else if (path.equals("/api/users/register")) {
             code = status("registerStatus", 201);
             if (code == 201) { var input = JsonText.object(body); name = input.getString("fullName"); login = input.getString("login"); result = user(); }
@@ -82,7 +96,7 @@ public final class BrowserTestServer {
             if (method.equals("POST") && code == 200) { code = 201; started = true; rideState = "ACTIVE"; result = ride(); }
             else result = started ? "[" + ride() + "]" : "[]";
         } else if (path.endsWith("/finish")) { code = status("finishStatus", 200); if (code == 200) rideState = "FINISHED"; result = ride(); }
-        else if (path.endsWith("/review")) { code = status("reviewStatus",200); if (code == 200) reviewJson = body; result = ride(); }
+        else if (path.endsWith("/review")) { code = status("reviewStatus",200); if (code == 200) reviewJson = Json.createObjectBuilder(JsonText.object(body)).add("reviewedAt", Instant.now().toString()).build().toString(); result = ride(); }
         else if (path.endsWith("/pay")) { code = status("payStatus", 200); if (code == 200) rideState = "PAID"; result = ride(); }
         else if(path.equals("/api/documents")){result="[]";}
         else if (path.equals("/api/documents/generate")) {

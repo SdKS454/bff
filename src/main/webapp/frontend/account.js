@@ -296,7 +296,7 @@
         if (![body.rideRating, body.scooterRating].every(value => Number.isInteger(value) && value >= 1 && value <= 5))
           throw new Error('Выберите обе оценки от 1 до 5.');
         await service.request('/api/rides/' + encodeURIComponent(form.dataset.rideId) + '/review', 'PUT', body);
-        committed = 'Отзыв сохранён'; await refresh(); if(dialog.open&&form.isConnected)account('rides'); page.notify(committed);
+        committed = 'Отзыв сохранён'; await page.refreshReviews(); await refresh(); if(dialog.open&&form.isConnected)account('rides'); page.notify(committed);
       } else if (form.id === 'history-document-form') {
         if (values.from > values.to) throw new Error('Начало периода должно быть не позже конца.');
         await service.downloadDocument({docType:'USER_HISTORY', from:values.from, to:values.to});await loadDocuments();
@@ -371,7 +371,11 @@
   refresh().then(() => {
     const query = new URLSearchParams(location.search);
     if (query.get('auth') === 'register') auth('register');
-    else if (query.get('auth') === 'login') auth();
+    else if (query.get('auth') === 'login') {
+      if (state.user?.role === 'ADMIN') location.replace((document.body.dataset.ctx || '') + '/auth/entry');
+      else if (state.user) account();
+      else auth();
+    }
     else if (query.has('account')) account(query.get('account'));
   }).catch(handleError);
 })();
