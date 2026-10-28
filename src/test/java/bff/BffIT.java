@@ -28,6 +28,7 @@ class BffIT {
     static volatile int validateStatus, blockedStatus, rideStatus, loginStatus, documentStatus;
     static volatile String blockedBody, profile, loginBody, documentContentType;
     static volatile int logoutStatus;
+    static volatile long documentDelayMillis;
     static volatile byte[] documentBody;
     static volatile String rideState;
     HttpClient client;
@@ -68,7 +69,7 @@ class BffIT {
         documentContentType = "application/pdf";
         documentBody = "%PDF-1.4\nfixture\n%%EOF".getBytes(StandardCharsets.US_ASCII);
         rideState = "ACTIVE";
-        logoutStatus = 204;
+        logoutStatus = 204; documentDelayMillis = 0;
         client = HttpClient.newBuilder().cookieHandler(new CookieManager(null, CookiePolicy.ACCEPT_ALL)).build();
     }
     static void handle(HttpExchange e) throws IOException {
@@ -90,6 +91,9 @@ class BffIT {
         else if(path.equals("/api/documents/"+RIDE)&&e.getRequestMethod().equals("DELETE"))status=204;
         else if(path.equals("/api/rides/"+RIDE+"/position"))status=204;
         else if (path.equals("/api/documents/generate") && documentStatus == 200) {
+            if (documentDelayMillis > 0) {
+                try { Thread.sleep(documentDelayMillis); } catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); throw new IOException(interrupted); }
+            }
             e.getResponseHeaders().set("Content-Type", documentContentType);
             e.sendResponseHeaders(200, documentBody.length);
             e.getResponseBody().write(documentBody); e.close(); return;
@@ -422,5 +426,12 @@ class BffIT {
         assertFalse(called("/api/users/me"));
         assertEquals(401, request("GET", "/api/users/me", null, null).statusCode());
         assertEquals(200, request("GET", "/api/users/me", null, "Bearer t").statusCode());
+    }
+    @Test void firstPdfMayTakeLongerThanTenSecondsWithoutBeingReportedUnavailable() throws Exception {
+        documentDelayMillis = 11000;
+        var response = request("POST", "/api/documents/generate", "{\"docType\":\"USER_HISTORY\",\"from\":\"2026-10-01\",\"to\":\"2026-10-28\"}", "Bearer t");
+        assertEquals(200, response.statusCode());
+        assertTrue(response.headers().firstValue("Content-Type").orElseThrow().startsWith("application/pdf"));
+        assertTrue(response.body().startsWith("%PDF-"));
     }
 }

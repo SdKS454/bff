@@ -138,7 +138,8 @@ public class RideRepositoryJdbcImpl implements RideRepository {
         }catch(SQLException e){throw new ApiException(503,"Хранилище поездок недоступно");}
     }
 
-    @Override public boolean review(UUID id, ru.itis.model.RideReview review) {
+    @Override
+   public boolean review(UUID id, ru.itis.model.RideReview review) {
         return update("UPDATE rides SET ride_rating=?, scooter_rating=?, ride_comment=?, scooter_comment=?, reviewed_at=? "
                 + "WHERE id=? AND status IN ('FINISHED','PAID')", review.rideRating(), review.scooterRating(),
                 review.rideComment(), review.scooterComment(), Timestamp.from(review.reviewedAt()), id) == 1;

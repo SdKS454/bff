@@ -23,6 +23,6 @@ public interface RideRepository {
     void removeCancelled(UUID id);
     boolean completeFinish(UUID id);
     List<RideEntity> pending();
-    boolean pay(UUID id, Instant paidAt);
     boolean review(UUID id, ru.itis.model.RideReview review);
+    boolean pay(UUID id, Instant paidAt);
 }

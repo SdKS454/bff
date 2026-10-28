@@ -1,634 +1,602 @@
-# Кикшеринг: REST-контракты микросервисов (по BFF)
+# Кикшеринг — полные REST-контракты BFF и пяти микросервисов
 
-Исходный документ: 16 октября 2026, @heaven. Версия для сдачи, сверка всех пяти сервисов и BFF: 27 октября 2026.
+**Редакция: 28 октября 2026.** Сверено с финальной сборкой для преподавателя, подготовленной из присланного `bff-source-for-review.tar.gz`, с восстановленными недостающими файлами и исправлением первого медленного PDF. Это текущий самостоятельный контракт для рассылки командам и проверки. Старые предположения о `/scooter-bff`, целочисленной сетке и отсутствии отзывов не являются текущим API.
 
-Все разделы ниже сверены с каноническими исходниками: BFF в `src/`, пять
-сервисов в `services/`. Полный стенд собран и проверен на настоящих приложениях,
-PostgreSQL, Docker Compose и Chromium; HTTP-фикстуры в полной проверке не используются.
-Публичные адреса localhost:8080–8085, контекст `/`. Инструкция запуска —
-[local-stack/README.md](../local-stack/README.md).
+Всего **60 реализованных операций API**: BFF 22, User 13, Moderation 5, Scooter 6, Ride 9, Documents 5. HTML-переходы, статические файлы и служебные HTTP-методы перечислены отдельно и не увеличивают это число.
 
-## 1. Обзор и общие соглашения
+Исходный документ от 16.10.2026 (@heaven) сохранён побайтово в `archive/API_CONTRACTS_ORIGINAL_2026-10-16.md` для аудита. Все 21 тема обсуждения сохранены в §10 с актуальными решениями. Предложения и внутренние SQL-поля не объявляются действующими endpoint.
 
-Исходный MD сохранён побайтово в docs/archive. Все 21 тема обсуждения сохранены
-в §5; исторические предложения не объявляются действующими endpoint.
-Актуальными считаются версии `services/`, а не первоначальные архивы команд
-и не старые временные handoff-сборки. «Реализовано» подтверждено кодом/запуском;
-Исторические предложения в §5 отделены от принятых решений сдаваемой версии.
+Содержание: §1 адреса/архитектура; §2 протокол и доступ; §3 все маршруты; §4 DTO; §5 регистрация/вход/выход; §6 самокаты/GPS; §7 поездки/тарифы/отзывы; §8 блокировки/админка; §9 три PDF и схема данных; §10 решения 21 исходного вопроса; §11 сценарии; §12 настройки/запуск; §13 изменения/проверка.
 
-Оплата по подтверждению пользователя — **учебная без банковского списания**.
-Тариф хранит Ride: 50 ₽ за старт + 8 ₽ за начатую минуту, минимум одна минута.
-Снимок тарифа записывается в поездку и не меняется после редактирования rates.
-Настоящий платёжный провайдер не подключён. Для сдаваемого учебного стенда
-выбрана евклидова сетка: дробные X/Y от -1000000 до 1000000 включительно,
-distance в единицах сетки. Это соответствует примерам самокатов и формуле nearest
-исходного контракта. GPS/географические градусы не смешиваются с сеткой.
+## 1. Адреса и архитектура
 
-| Сервис | Порт по умолчанию | Свойство в BFF | Вызывается из BFF |
-| --- | --- | --- | --- |
-| User Service | 8081 | `user.service.url` | да |
-| Moderation Service | 8082 | нет в BFF; `MODERATION_BASE_URL` в готовом User; MODERATION_SERVICE_URL в Documents | **нет прямых REST-вызовов BFF**; User и Documents вызывают status; BFF задаёт URL панели |
-| Scooters Service | 8083 | `scooter.service.url` | да |
-| Ride Service | 8084 | `ride.service.url` | да |
-| Documents Service | 8085 | `document.service.url` | да |
-
-### 1.1 Адреса согласованного локального стенда
-
-| Компонент | Базовый адрес / страница |
-| --- | --- |
-| BFF + ScootX, порт 8080, контекст `/` | `http://localhost:8080/` |
-| Вход BFF для пользователей и модераторов | `http://localhost:8080/login.jsp` |
-| Прямая форма входа ScootX | `http://localhost:8080/?auth=login` |
-| Регистрация | `http://localhost:8080/register.jsp` |
-| User Service | `http://localhost:8081` |
-| Moderation Service | `http://localhost:8082` |
-| Панель Moderation (адрес подтверждён её командой) | `http://localhost:8082/admin/users.html` |
-| Scooters Service | `http://localhost:8083` |
-| Ride Service | `http://localhost:8084` |
-| Documents Service | `http://localhost:8085` |
-
-Пути BFF ниже указаны относительно его базового адреса. При согласованном
-корневом развёртывании полный адрес входа API —
-`http://localhost:8080/api/auth/login`; downstream-адрес User —
-`http://localhost:8081/api/users/login`. Это разные ручки двух приложений.
-
-Порт не задаёт context path. Здесь согласован именно контекст `/`, поэтому
-префикс `/scooter-bff` в адресах этого стенда не используется. Maven по-прежнему
-создаёт `scooter-bff.war`: для корневого запуска в обычном Tomcat его размещают
-как `webapps/ROOT.war` либо задают application context `/` в IDE. Если положить
-непереименованный `scooter-bff.war`, стандартный Tomcat даст другой контекст
-`/scooter-bff`; это альтернативный способ развёртывания, а не адрес этого стенда.
-BFF берёт context path динамически; прикладной код менять для `/` не требуется.
-
-`login.jsp` и `register.jsp` совместимы со старым адресом входа, но перенаправляют
-в формы единого ScootX. Формы открываются без микросервисов; для входа нужен
-User с PostgreSQL/JWT-ключами и работающим Moderation. BFF не должен занимать
-8081 одновременно с User.
-
-### Общие правила
-
-- **Формат:** JSON, UTF-8, `Content-Type: application/json`. Исключение — PDF-чек (`application/pdf`).
-- **UUID:** id пользователя, поездки, тарифа и sourceId документа — строки UUID, не числа. numberPlate остаётся строкой номера.
-- **Авторизация:** `Authorization: Bearer <JWT>`. BFF принимает JWT из этого заголовка либо из HTTP-сессии (кладётся туда после `/api/auth/login`) и **пробрасывает его без изменений в каждый защищённый downstream-вызов**. Каждый сервис сам валидирует токен и достаёт из него `userId`.
-- **Проверка токена в BFF:** перед защищёнными `/api/*` BFF вызывает `GET {User}/api/users/validate`. Публичны только POST register/login, GET users/exists. POST auth/logout обрабатывает текущий/истёкший токен сам, без предварительного validate. Любой 2xx validate — успех; отказ — 401, недоступность/5xx — 503. Общего публичного исключения `/api/auth/*` нет.
-- **Формат ошибки:** `{"error": "текст"}`. Обычные proxy-вызовы сохраняют статус и тело downstream. При разборе успешного login/me, проверке блокировки/PDF и при logout BFF может сформировать свою ошибку; поэтому «как есть» не означает все без исключения ответы.
-- **Типы/размер:** JSON-тело BFF — до 64 KiB, объект со строгими типами; JSON-числа координат должны быть конечными и находиться в диапазоне [-1000000, 1000000]. Готовый User принимает JSON-тело до 16 KiB (413 при превышении). Несоответствующий Content-Type API-запроса с телом — 415.
-- **Заголовок и сессия:** явный Authorization имеет приоритет. Некорректный явный заголовок не заменяется привилегированным JWT сессии. Сессия BFF — HttpOnly, только cookie, без session ID в URL.
-- **Origin:** ScootX работает с BFF с одного origin. BFF отклоняет межсайтовые write-запросы. Для прямых запросов панели Moderation к User его CORS_ALLOWED_ORIGINS должен включать `http://localhost:8082`; API получает Bearer, не cookie BFF.
-- **Недоступность сервиса:** BFF отвечает 503. Таймауты BFF: подключение 3 с, ответ 10 с.
-- **Именование полей:** camelCase. Координаты — `posX`, `posY` (в ТЗ они названы `posx`, `posy`; см. решения в §5).
-- **Даты:** `birthDate` — `YYYY-MM-DD`; метки времени — ISO-8601 с UTC/offset, не массив чисел.
-
-## 2. Публичный API BFF (клиент → BFF)
-
-Основные API и маршруты BFF перечислены ниже; большинство — простое проксирование с сохранением статуса и тела ответа downstream-сервиса. Колонка «Auth» — нужен ли JWT.
-
-| # | Метод и путь BFF | Auth | Дальше вызывает |
-| --- | --- | --- | --- |
-| 1 | `POST /api/auth/register` | нет | User: `POST /api/users/register` |
-| 2 | `POST /api/auth/login` | нет | User: `POST /api/users/login` |
-| 3 | `GET /api/users/exists?login=` | нет | User: `GET /api/users/exists` |
-| 4 | `GET /api/users/me` | да | User: `GET /api/users/me` |
-| 5 | `GET /api/scooters` | да | Scooters: `GET /api/scooters` |
-| 6 | `POST /api/scooters/nearest` | да | Scooters: `POST /api/scooters/nearest` |
-| 7 | `GET /api/scooters/{numberPlate}` | да | Scooters: `GET /api/scooters/{numberPlate}` |
-| 8 | `POST /api/rides` | да | User: `me`, `blocked`; Ride: `POST /api/rides` |
-| 9 | `PUT /api/rides/{id}/finish` | да | Ride: `PUT /api/rides/{id}/finish` |
-| 10 | `POST /api/rides/{id}/pay` | да | Ride: `POST /api/rides/{id}/pay` |
-| 11 | `GET /api/rides` | да | User: `me`; Ride: `GET /api/rides?userId=` |
-| 12 | `POST /api/documents/generate` | да | Documents: `POST /api/documents/generate` |
-| 13 | `POST /api/auth/logout` | текущий JWT из Bearer/сессии; повтор без JWT допустим | User: `POST /api/users/logout`, затем закрытие сессии BFF; ответ 204 |
-| 14 | `POST /logout` | как выше | тот же выход для HTML-формы, затем 303 на `/login.jsp` |
-| 15 | `GET /logout` | нет | страница подтверждения; ничего не отзывает |
-| 16 | `GET /api/config` | да | локальная настройка `{moderationPanelUrl}` для перехода ADMIN |
-| 17 | `GET /api/rates` | да | Ride: активные тарифы |
-| 18 | `PUT /api/rides/{id}/position` | да | Ride: обновление позиции владельцем ACTIVE |
-| 19 | `GET /api/documents?limit=50&offset=0` | да | Documents: история собственных генераций |
-| 20 | `GET /api/documents/{id}` | да | Documents: собственные метаданные |
-| 21 | `GET /api/documents/{id}/download` | да | Documents: повторный PDF из снимка |
-| 22 | `DELETE /api/documents/{id}` | да | Documents: soft delete |
-
-BFF не вызывает REST API Moderation напрямую. Браузер ADMIN переходит на страницу панели, а User получает блокировки у Moderation. Это разные виды взаимодействия.
-
-### 2.1 Регистрация
-
-`POST /api/auth/register` — проверяет поля и проксирует результат User Service.
-Логин: 3–64 символа латиницы, цифр, `_`, `.` и `-`, сервер приводит к нижнему регистру
-и убирает крайние пробелы. Пароль: минимум 8 символов (String.length как у User),
-максимум 72 байта UTF-8, без NUL. fullName обязателен: до 200 символов после trim,
-без управляющих символов. birthDate обязательна: YYYY-MM-DD, от 1900-01-01 до
-сегодня UTC. avatarUrl опционален. Роль клиента не пересылается; User создаёт USER.
-ScootX после успешной регистрации выполняет отдельный запрос login. Если вход
-не удался, аккаунт уже создан: UI предлагает войти без повторной регистрации.
-
-```json
-// Запрос
-{
-  "login": "ivan",
-  "password": "example-password",
-  "fullName": "Иван Петров",
-  "birthDate": "2000-05-17",
-  "avatarUrl": "https://cdn.example.com/a/ivan.png"
-}
-// Ответ 201: профиль нового пользователя
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000", "login": "ivan", "role": "USER", "fullName": "Иван Петров",
-  "birthDate": "2000-05-17", "avatarUrl": "https://cdn.example.com/a/ivan.png",
-  "deleted": false, "blocked": false
-}
-```
-
-### 2.2 Логин
-
-`POST /api/auth/login` — в теле запроса только `login` и `password`. При успехе BFF создаёт HTTP-сессию, кладёт в неё JWT и выставляет таймаут сессии = `expiresInSeconds`. Токен мы также возвращаем в теле ответа.
-
-```json
-// Запрос
-{ "login": "ivan", "password": "example-password" }
-// Ответ 200
-{
-  "accessToken": "eyJhbGciOi...",
-  "expiresInSeconds": 3600,
-  "user": { "id": "550e8400-e29b-41d4-a716-446655440000", "login": "ivan", "role": "USER", "fullName": "Иван Петров",
-            "birthDate": "2000-05-17", "avatarUrl": null, "deleted": false, "blocked": false }
-}
-```
-
-Если User Service ответил не 2xx, статус и тело пробрасываются клиенту (ожидаем 401 для неверных данных). Отсутствующий/пустой accessToken, неверное время жизни или неправильный UUID пользователя в успешном login-ответе дают 502.
-
-#### Переход после входа
-
-Фронтенд читает `user` и `accessToken` из JSON-ответа login.
-
-- `user.role === "ADMIN"`: через `location.replace` переходит на
-  `http://localhost:8082/admin/users.html#accessToken=<encodeURIComponent(accessToken)>`.
-- `USER`: остаётся в ScootX и открывает личный кабинет; в Moderation не переходит.
-- Браузер BFF не сохраняет JWT в localStorage/sessionStorage; для BFF используется
-  HttpOnly-сессия. Токен для Moderation передаётся во фрагменте, не в query string.
-
-При отсутствии токена панель Moderation направляет на
-`http://localhost:8080/login.jsp`. После получения токена панель должна прочитать
-фрагмент, при необходимости сохранить JWT в своём sessionStorage, очистить
-фрагмент через history.replaceState и передавать `Authorization: Bearer <JWT>`
-в запросах к API. Права ADMIN проверяются сервисами, а не только фронтендом.
-
-Адрес панели в BFF по умолчанию совпадает с адресом команды. Его можно изменить
-через `MODERATION_PANEL_URL` или `-Dmoderation.panel.url=...` (приоритет JVM).
-Текущий фронт — `frontend/account.js` и `frontend/api.js`; старого `js/login.js`
-после объединения ScootX больше нет. `login.jsp` остаётся совместимым входным URL.
-
-### 2.3 Проверка логина
-
-`GET /api/users/exists?login=ivan` — без авторизации. Пустой `login` → BFF сам отвечает `400 {"error":"Укажите логин"}`. Остальное — прокси. Готовый User возвращает `200 {"exists": true}` (либо false).
-
-### 2.4 Профиль
-
-`GET /api/users/me` — прокси `GET {User}/api/users/me`. Внутри BFF тот же вызов используется, чтобы узнать `userId`, поэтому ответ **обязан** содержать `id` в формате UUID (иначе BFF ответит 502).
-
-```json
-// Ответ 200
-{ "id": "550e8400-e29b-41d4-a716-446655440000", "login": "ivan", "role": "USER", "fullName": "Иван Петров",
-  "birthDate": "2000-05-17", "avatarUrl": null, "deleted": false, "blocked": false }
-```
-
-### 2.5 Список самокатов
-
-`GET /api/scooters` — все самокаты. Фильтр «только свободные»: `?status=READY` или `?available=true` (оба ведут к `GET {Scooters}/api/scooters?status=READY`). Другие значения `status` игнорируются.
-
-```json
-// Ответ 200
-[ { "numberPlate": "A123BC", "status": "READY", "charge": 87, "posX": 10, "posY": 25 } ]
-```
-
-### 2.6 Ближайшие самокаты
-
-`POST /api/scooters/nearest` — тело с `posX` и `posY`, оба обязательны, иначе `400 {"error":"Нужны posX и posY"}`. `GET` на этот путь → 405. BFF проверяет конечные JSON-числа и передаёт их без округления до int; строки, null и объекты вместо обязательных координат дают 400.
-
-```json
-// Запрос
-{ "posX": 10, "posY": 24 }
-// Ответ 200, отсортирован по distance возрастающей
-[ { "numberPlate": "A123BC", "status": "READY", "charge": 87, "posX": 10, "posY": 25, "distance": 1.0 },
-  { "numberPlate": "B777OP", "status": "READY", "charge": 64, "posX": 12, "posY": 30, "distance": 6.3 } ]
-```
-
-Текущий ScootX читает `numberPlate`, `status`, `charge`, `posX`, `posY` и при наличии `distance`. Старый fallback `number_plate` больше не используется: актуальное имя — `numberPlate`. distance выражен в единицах учебной сетки; интерфейс показывает «ед. сетки».
-
-### 2.7 Самокат по номеру
-
-`GET /api/scooters/{numberPlate}` — номер уже декодирован контейнером Servlet и кодируется ровно один раз при вызове Scooters. Ответ — один объект самоката той же формы, без `distance`; 404, если не найден.
-
-### 2.8 Начало поездки
-
-`POST /api/rides`. Порядок внутри BFF: (1) `GET {User}/api/users/me` → `userId`; (2) `GET {User}/api/users/{userId}/blocked`; если заблокирован — `403 {"error":"Пользователь заблокирован"}`; (3) `POST {Ride}/api/rides`. `userId` в Ride не передаётся — Ride берёт его из JWT.
-
-```json
-// Запрос
-{ "numberPlate": "A123BC", "rateId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8", "posX": 10, "posY": 24 }
-// Ответ 201
-{ "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7", "userId": "550e8400-e29b-41d4-a716-446655440000", "numberPlate": "A123BC", "rateId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8", "status": "ACTIVE",
-  "startedAt": "2026-10-16T07:40:00Z", "startPosX": 10, "startPosY": 24 }
-```
-
-`rateId` — необязательный UUID (может быть null; ScootX его сейчас не шлёт). posX/posY при старте API тоже допускают null, но форма ScootX просит обе координаты. numberPlate обязателен. Тариф определяет Ride; null rateId выбирает активный default из GET /api/rates. При deleted=true BFF также запрещает старт (403). Недоступность проверки бана → 503, некорректный ответ → 502, до Ride запрос не доходит.
-
-### Обновление позиции активной поездки
-
-`PUT /api/rides/{id}/position`, тело `{"posX":12.125,"posY":16.75}` → 204.
-Доступ только владельцу ACTIVE, неверные координаты → 400, чужая → 403,
-отсутствующая → 404, завершённая → 409. Ride сохраняет lastPosX/lastPosY/
-lastPositionAt и передаёт позицию Scooter со служебным ключом. Finish задаёт
-окончательную позицию отдельно. Начало/тариф от position не меняются.
-
-### 2.9 Завершение поездки
-
-`PUT /api/rides/{id}/finish` — `{id}` должен быть UUID, иначе 404. Обе конечные числовые координаты обязательны; при ошибке — 400 до вызова Ride. Владельца и состояние поездки проверяет Ride.
-
-```json
-// Запрос
-{ "posX": 15, "posY": 30 }
-// Ответ 200
-{ "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7", "status": "FINISHED", "finishedAt": "2026-10-16T08:05:00Z",
-  "durationSeconds": 1500, "amount": 250.00, "currency": "RUB" }
-```
-
-### 2.10 Оплата поездки
-
-`POST /api/rides/{id}/pay` — без тела либо с пустым объектом (BFF шлёт `{}`). id должен быть UUID, иначе 404. Владельца, состояние и идемпотентность проверяет Ride. Фронтенд не устанавливает PAID локально и не делает расчёт стоимости вместо Ride.
-
-```json
-// Ответ 200
-{ "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7", "status": "PAID", "amount": 250.00, "currency": "RUB", "paidAt": "2026-10-16T08:06:10Z", "paymentMode": "EDUCATIONAL" }
-```
-
-### 2.11 История поездок
-
-`GET /api/rides` — поездки текущего пользователя; параметров нет. BFF сначала получает `userId` из User Service, потом вызывает `GET {Ride}/api/rides?userId={userId}`. Неизвестный хвост пути, например `GET /api/rides/любой-путь`, возвращает 404. Клиентский userId в query не заменяет текущего пользователя.
-
-```json
-// Ответ 200
-[ { "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7", "numberPlate": "A123BC", "status": "PAID", "startedAt": "2026-10-16T07:40:00Z",
-    "finishedAt": "2026-10-16T08:05:00Z", "amount": 250.00, "currency": "RUB" } ]
-```
-
-Фронтенд использует ACTIVE → FINISHED → PAID. Сумма и статусы берутся из Ride, локальной имитации оплаты/тарифа нет.
-
-### 2.12 Генерация PDF
-
-`POST /api/documents/generate` — успешный ответ BFF: `200`, `Content-Type: application/pdf`, `Content-Disposition: attachment; filename="document.pdf"`, тело = байты PDF от Documents Service. Ошибки — JSON.
-
-```json
-// Чек оплаченной поездки
-{ "docType": "RIDE_PAYMENT", "sourceId": "7c9e6679-7425-40de-944b-e07fc1f90ae7" }
-// История поездок
-{ "docType": "USER_HISTORY", "from": "2026-10-01", "to": "2026-10-31" }
-// Уведомление о блокировке
-{ "docType": "USER_BLOCKED" }
-```
-
-userId BFF берёт из `/api/users/me`, клиентское значение не использует.
-Для RIDE_PAYMENT нужен UUID sourceId; для USER_HISTORY — корректный период.
-RECEIPT принимается как старый alias RIDE_PAYMENT; status не пересылается.
-Documents дополнительно проверяет владельца поездки и факт оплаты по JWT.
-BFF проверяет Content-Type и сигнатуру PDF; успешный ответ не в формате PDF → 502.
-
-### 2.13 Выход
-
-POST `/api/auth/logout` не требует предварительного validate и вызывает User POST `/api/users/logout` с текущим JWT,
-затем закрывает сессию BFF; успешный ответ — 204. POST `/logout` делает то же
-для HTML-формы, затем отвечает 303 с Location `/login.jsp` при корневом контексте.
-GET `/logout` показывает подтверждение и ничего не меняет.
-
-Без JWT повторный выход допустим. 401 User при отзыве означает, что токен уже
-непригоден. Если User недоступен/отзыв отклонён, сессия BFF закрывается, но BFF
-возвращает ошибку, не заявляя успешный отзыв. Исправленный Moderation также вызывает User validate на каждом защищённом
-запросе и отвергает отозванный JWT. Прочие сервисы должны отдельно подтвердить
-проверку отзыва, если им нужен немедленный общий logout.
-
-Выход из исправленной панели Moderation вызывает непосредственно User
-POST `/api/users/logout`, очищает sessionStorage и открывает BFF login.jsp.
-Сессия BFF физически может ещё существовать, но её JWT уже отозван и BFF
-возвращает 401. При сбое отзыва панель показывает ошибку и предлагает повторить выход.
-
-### 2.14 Тарифы и настройки интерфейса
-
-GET `/api/rates` — защищённый прокси BFF в Ride: активные тарифы с id, name,
-unlockFee, pricePerMinute, currency, default, paymentMode. ScootX перед стартом
-получает default-тариф и показывает цену старта/начатой минуты. Ранее пример
-50/8 не был действующим тарифом; 26 октября он явно принят для учебного стенда
-и теперь хранится в Ride DB. Не смешивать это с настоящим банковским списанием.
-
-
-
-GET `/api/config` защищён JWT/сессией и возвращает:
-
-```json
-{"moderationPanelUrl":"http://localhost:8082/admin/users.html"}
-```
-
-Роли не выдаются этим endpoint: доступ к админским API проверяют сами сервисы.
-Вне localhost настройте доверенный HTTPS URL панели.
-
-Профиль ScootX только для чтения, write API нет. Избранное — номера самокатов
-только на устройстве, отдельно по userId; серверного endpoint избранного нет.
-Координаты учебной сетки вводятся вручную; GPS-кнопка удалена. Каталог требует входа.
-Локальные пользователи, запас хода 30 км и имитация перемещения/разряда
-из старого макета не используются. Учебные тариф/оплата теперь реализованы на
-стороне Ride по подтверждению пользователя, с явной пометкой; это не demo-storage.js.
-Время активной поездки может отображаться по startedAt, но сумму считает Ride.
-
-### Коды ответов BFF
-
-| Код | Когда |
-| --- | --- |
-| 400 | некорректный JSON/поля; нет `login` или `posX`/`posY` |
-| 401 | нет JWT или токен отвергнут; 5xx validate не маскируется как 401 |
-| 403 | явный бан/удалённый пользователь запрещает старт; также запрет Origin или отказ downstream в доступе |
-| 404 | неизвестный путь внутри `/api/*` |
-| 405 | неподдерживаемый метод, в том числе GET `/api/scooters/nearest` |
-| 415 | тело API-запроса отправлено не как application/json |
-| 502 | некорректный ответ User/статуса блокировки или неправильный PDF |
-| 503 | сервис недоступен или таймаут |
-| 413 | слишком большое тело на стороне User; BFF собственный лимит тела сейчас сообщает как 400 |
-| любой другой | обычный proxy сохраняет ответ downstream; исключения разбора/проверок и logout описаны выше |
-
-## 3. Контракты для команд сервисов (BFF → сервис)
-
-Разделы 3.1–3.5 описывают фактические API пяти сервисов из `services/`.
-В защищённых вызовах используется Authorization: Bearer JWT; ошибки JSON.
-BFF непосредственно вызывает только часть User API. Исправленная админка Moderation
-обращается к админским User endpoints напрямую с Bearer и разрешённым CORS.
-
-### 3.1 User Service (`:8081`)
-
-**Реализовано в присланном User.** Пути относительны к `http://localhost:8081`;
-для этих URL User разворачивается в корне (например ROOT.war), либо его context
-path явно добавляют в `user.service.url` BFF.
-
-| Эндпоинт | Доступ / тело | Фактический ответ / использование |
+| Компонент | Адрес | Назначение |
 | --- | --- | --- |
-| `POST /api/users/register` | публичный; login, password, fullName, birthDate, avatarUrl; правила §2.1. BFF не пересылает role | 201 + user; роль нового пользователя всегда USER. 409 — занятый нормализованный логин |
-| `POST /api/users/login` | публичный; только login и password | 200 accessToken, expiresInSeconds, user. 401 — неправильные данные/удалённый пользователь, 503 — недоступен Moderation/БД |
-| `POST /api/users/logout` | текущий Bearer | 204 — токен отозван; прямой повтор с уже отозванным JWT → 401 (BFF считает это завершённым выходом) |
-| `GET /api/users/exists?login=` | публичный, корректный логин | 200 `{"exists": true}` или false; невалидный/пустой логин → 400 |
-| `GET /api/users/validate` | JWT; проверяет подпись/issuer/exp, запись токена, текущего пользователя и роль | 204 — валиден, 401 — недействителен/отозван/истёк. Не вызывает Moderation; БД недоступна → 503 |
-| `GET /api/users/me` | JWT | 200 user; blocked запрашивается у Moderation, его недоступность → 503 |
-| `GET /api/users` | ADMIN | 200 массив активных пользователей: `[{"id":"UUID","login":"ivan","fullName":"Иван Петров"}]`; с USER → 403 |
-| `GET /api/users/{id}` | сам пользователь или ADMIN; UUID | 200 user; нет активного пользователя → 404, чужой для USER → 403. Также запрашивает статус Moderation |
-| `GET /api/users/{id}/blocked` | сам пользователь или ADMIN; UUID | 200 `{"blocked": true}` или false. Нет пользователя → 404; ошибки Moderation обрабатываются ниже |
-| `POST /api/users/{id}/ban` | ADMIN; `{"reason":"RIDE_DANGEROUS"}` | 200 статус Moderation; проверяет существование активного пользователя и пересылает reason. Имя причины проверяется также Moderation |
-| `POST /api/users/{id}/unban` | ADMIN; тело не требуется | 200 статус Moderation; проверяет пользователя, затем проксирует unban |
-| `GET /api/users/blocked` | ADMIN; query limit/offset | 200 массив из Moderation; limit по умолчанию 100, диапазон 1–500; offset по умолчанию 0, неотрицательный int. Некорректные параметры → 400 |
-| `GET /api/users/reasons` | ADMIN | 200 массив причин из Moderation |
+| BFF + ScootX | http://localhost:8080/ | Пользовательский сайт, HTTP-сессия и прокси |
+| User | http://localhost:8081 | Регистрация, JWT, профили; ADMIN-прокси в Moderation |
+| Moderation | http://localhost:8082 | Блокировки; панель /admin/users.html |
+| Scooter | http://localhost:8083 | Каталог, nearest, внутренние резервации |
+| Ride | http://localhost:8084 | Поездки, тарифы, учебная оплата, отзывы |
+| Documents | http://localhost:8085 | Генерация PDF и метаданные документов |
 
-Нет JWT → 401, нет требуемых прав → 403. Во внешний API BFF вынесены me/exists
-из GET users и register/login/logout из auth; me защищён JWT; **проксирование админских User
-маршрутов в BFF не реализовано**: панель обращается к User напрямую. Решение и исходное предложение сохранены в п.15.
-Изменения профиля и публичного API назначения ADMIN в полученном User нет.
-ADMIN назначается оператором через CLI PromoteAdmin; старые токены пользователя
-при повышении роли отзываются. Публичная регистрация не повышает роль.
+Все приложения развёрнуты с контекстом **`/`**, без префикса `/scooter-bff`. Имя исходного WAR не определяет URL в этом стенде: скрипт разворачивает его как ROOT.war в отдельном CATALINA_BASE. Порт PostgreSQL (например 5432 или 7689) не относится к HTTP-портам 8080–8085.
 
-User:
+BFF вызывает User, Scooter, Ride, Documents. REST-вызовов BFF → Moderation нет: проверка блокировки идёт через User; браузер администратора использует User API, а User вызывает Moderation. Documents отдельно вызывает User/Ride/Moderation. Ride вызывает внутренние Scooter reserve/position/release.
+
+В браузере используйте последовательно `localhost`: Cookie для localhost и 127.0.0.1 принадлежат разным хостам. Скрипты проверки могут использовать 127.0.0.1 с Bearer, это не переносит browser-сессию между хостами.
+
+## 2. Общие правила HTTP, форматы и доступ
+
+### 2.1 JSON, идентификаторы и время
+
+- Для API-клиента: `Accept: application/json`. Для запроса с JSON: `Content-Type: application/json`. Успех генерации/скачивания документа возвращает PDF, а не JSON.
+- Идентификаторы пользователей, поездок, тарифов, документов — UUID-строки, не числа. `numberPlate` — строка до 64 символов. Номер кодируется в URL один раз; `+` и `%` не декодируются вручную второй раз.
+- Дата рождения и границы истории — `YYYY-MM-DD`. Время — ISO-8601 с Z/offset, не массив; история PDF отбирается по дате startedAt в **UTC**, обе границы включены.
+- JSON-числа: целые/дробные по назначению, без NaN/Infinity и без числовых строк. Денежные суммы считаются Ride через BigDecimal, JSON amount/unlockFee/pricePerMinute — числа. Базовая валюта RUB.
+- Списки обычно возвращаются непосредственно массивом, без envelopes `users`, `scooters`, `data` и т.п.; пустой результат — `[]`. `null` не равен отсутствующему объекту/ошибке.
+- Примеры UUID, номеров и дат ниже иллюстрируют формат. При реальных запросах использовать значения из своих ответов API, а не ожидать существования примерного UUID.
+
+### 2.2 JWT и сессии
+
+Защищённый API принимает `Authorization: Bearer <JWT>`. BFF дополнительно принимает JWT своей HTTP-сессии, созданной login. Явный Authorization имеет приоритет над Cookie; неверный явный заголовок не откатывается к более привилегированной сессии. Cookie BFF — HttpOnly, JSESSIONID меняется при входе, срок бездействия устанавливается по expiresInSeconds. Cookie BFF не заменяет Bearer на прямых API других сервисов.
+
+User подписывает **RS256**, issuer по умолчанию `scooter-user-service`. Claims: iss, sub=userId, jti (UUID токена), iat, exp, userId, role=USER/ADMIN. TTL по умолчанию 3600 секунд. User проверяет подпись/алгоритм/issuer/время, наличие пользователя, соответствие роли и запись токена/отзыв в БД. Хранится хэш токена, приватный RSA-ключ не передаётся другим сервисам.
+
+Перед защищённым `/api/*` BFF вызывает User validate (ожидаемый успешный ответ User — 204; BFF технически принимает любой 2xx). Scooter/Ride/Moderation валидируют через User; Documents проверяет RS256 публичным ключом и также вызывает validate для немедленного отзыва. Одного декодирования JWT недостаточно. User validate **не вызывает Moderation**, поэтому нет рекурсии status → validate → status.
+
+Публичны BFF POST register/login/logout, GET users/exists и GET reviews. У прямого User публичны POST register/login и GET exists; прямой logout требует действующий Bearer. GET reviews Ride публичен. Внутренние Scooter-операции используют X-Service-Key, а не пользовательский JWT.
+
+Смена роли через CLI отзывает старые токены. После повышения до ADMIN нужен новый вход. Login заблокированного пользователя разрешён: blocked передаётся в профиле; запрещается новый старт, а не завершение/оплата существующей поездки.
+
+### 2.3 Страница сервиса и реальные права
+
+При **навигации браузера** (`Sec-Fetch-Mode: navigate` либо GET/HEAD с Accept: text/html) на служебные API показывается 403 HTML со ссылкой на сайт. Это ограничение навигации, не замена авторизации и не firewall. Вызовы fetch/Postman/curl с JSON продолжают работать в пределах прав токена.
+
+Публичная HTML-страница панели может загружаться без ADMIN, но данные/операции защищены серверным API. Без токена её JS перенаправляет на BFF-вход, с USER показывает недостаточность прав. Пользователь вправе читать свой профиль/поездки/документы и каталог. ADMIN нужен для списка пользователей, справочников/списков блокировок и ban/unban; ADMIN не получает произвольный доступ к чужим поездкам/документам через их owner-only API.
+
+### 2.4 Ошибки и порядок фильтров
+
+Обычная API-ошибка — JSON-объект с `error` (строка); текст диагностический, не стабильный enum.
+
+```json
+{
+  "error": "Пользователь заблокирован"
+}
+```
+
+| Код | Смысл |
+| --- | --- |
+| 200 | Чтение/изменение/PDF успешно |
+| 201 | Регистрация или старт создали объект |
+| 204 | validate / logout / position / DELETE документа: без тела |
+| 302 | Browser-переход login.jsp/auth/entry |
+| 303 | POST /logout → login.jsp |
+| 400 | Неверные данные, типы, параметры/координаты |
+| 401 | Нет действующего JWT/сессии; User добавляет WWW-Authenticate |
+| 403 | Недостаточно прав, чужой объект, бан старта, неверный service key/Origin; при browser navigation — HTML |
+| 404 | Неизвестный путь/объект; иногда неверный UUID пути |
+| 405 | Путь есть, метод не поддерживается |
+| 409 | Конфликт состояния: занятый самокат, чужая резервация, незавершённая/неоплаченная поездка, иные координаты повтора |
+| 413 | Превышен размер тела у User/Scooter/Ride/Documents |
+| 415 | Неверный Content-Type у читаемой JSON-ручки |
+| 500 | Необработанная ошибка сервиса |
+| 502 | Неверный успешный ответ зависимости/структура/PDF |
+| 503 | Зависимость/БД недоступна, тайм-аут, неверная конфигурация PDF/ключа |
+
+Авторизация может сработать раньше проверки метода/параметров, поэтому запрос без JWT может вернуть 401 вместо ожидаемого 400/404/405. Browser navigation отдельно может вернуть HTML 403 ещё до JWT. У внутренних Scooter-операций отсутствие/неверный X-Service-Key даёт 403; отсутствие настройки ключа на сервере — 503.
+
+Лимиты читаемого JSON: BFF 64 КиБ (при собственном превышении **400**), User 16 КиБ (413), Scooter/Ride/Documents 64 КиБ (413). BFF может переслать User 413 для тела меньше своего лимита. Прямой Moderation читает тело без такого прикладного лимита и не требует Content-Type на ban так же строго; нельзя описывать все парсеры как одинаковые. User/Scooter/Ride/Documents отклоняют дубли JSON-полей; BFF JSON-P/Moderation не гарантируют тот же режим. Для API, не читающего тело (например pay), эти лимиты не являются отдельной бизнес-проверкой.
+
+BFF отклоняет изменяющие запросы с чужим Origin или Sec-Fetch-Site=cross-site (403). Для пустого DELETE тела Content-Type не нужен; непустой не-JSON в BFF — 415. User CORS по умолчанию разрешает origin панели http://localhost:8082, методы GET/POST/OPTIONS и заголовки Authorization/Content-Type/Accept. Корректный preflight — 204, запрещённый origin/метод/заголовок — 403. У остальных сервисов общего публичного CORS-шлюза нет.
+
+### 2.5 Повторение и доступность
+
+Автоматического банковского повторного списания нет. Повторные start не считаются идемпотентными: активная поездка уже существует → 409. Finish/pay и внутренние reserve/release имеют описанные ниже правила. При сбое проверки бана нельзя подставлять blocked=true/false; возвращается ошибка зависимости.
+
+BFF для generate/download PDF ждёт до **60 секунд** (холодный кэш шрифтов), для метаданных Documents — 10 секунд. Прочие HTTP-клиенты используют свои ограниченные тайм-ауты. Запускной скрипт создаёт writable PDFBox/fontconfig-кэш; его не следует заменять приватными ключами или хранить в Git.
+
+## 3. Реестр всех 60 операций API
+
+В колонке «доступ» A — текущий пользователь; ADMIN — роль администратора; SERVICE_KEY — X-Service-Key. «A / ADMIN» у профиля/статуса означает self либо ADMIN, но не произвольного USER. BFF допускает собственную сессию вместо Bearer. `{{...}}` — подставляемые реальные значения. Для всех строк применяются §2 и предусловия состояния, а не только успешный код.
+
+### 3.1 BFF: http://localhost:8080
+
+| ID | Метод / путь | Доступ | Тело JSON / query | Успех | Предусловия и результат |
+| --- | --- | --- | --- | --- | --- |
+| E001 | POST /api/auth/register | Нет | {"login":"{{loginA}}","password":"Example-password-2026!","fullName":"Иван Петров Иванович","birthDate":"2000-05-17"} | 201 | Свободный loginA. Создан USER, пароль/hash не возвращаются; не автоматический вход |
+| E002 | POST /api/auth/login | Нет | {"login":"{{loginA}}","password":"Example-password-2026!"} | 200 | Уже зарегистрирован loginA. accessToken, expiresInSeconds, user; сохранить tokenA и userA; BFF также создаёт HttpOnly JSESSIONID |
+| E003 | POST /api/auth/logout | A / сессия / без токена | — | 204 | Выполнять в конце сценария, дальше нужен новый вход. Текущий JWT отозван; BFF-сессия удалена, если вызван BFF |
+| E007 | GET /api/users/exists?login={{loginA}} | Нет | — | 200 | {"exists":true}; новый незанятый логин → false |
+| E008 | GET /api/users/me | A | — | 200 | Профиль A, роль, дата рождения и актуальный blocked |
+| E011 | GET /api/config | A | — | 200 | moderationPanelUrl=http://localhost:8082/admin/users.html |
+| E012 | GET /api/rates | A | — | 200 | Активные тарифы, default, валюта, paymentMode; базовый 50 + 8/начатая минута |
+| E014 | GET /api/scooters | A | — | 200 | Настоящий каталог, все статусы; удалённых нет |
+| E015 | POST /api/scooters/nearest | A | {"posX":37.618423,"posY":55.751244} | 200 | Только READY; расстояния в метрах, по возрастанию; X=долгота, Y=широта |
+| E016 | GET /api/scooters/{{plate}} | A | — | 200 | plate взять из реального каталога. Карточка существующего самоката |
+| E020 | GET /api/rides | A | — | 200 | Только история A; статусы ACTIVE/FINISHED/PAID, review=null либо объект |
+| E021 | POST /api/rides | A | {"numberPlate":"{{plate}}","posX":37.618423,"posY":55.751244} | 201 | READY plate; нет другой активной поездки у A/самоката; A не заблокирован. Начата одна ACTIVE-поездка, самокат IN_RIDE; сохранить rideId |
+| E022 | PUT /api/rides/{{rideId}}/position | A | {"posX":37.618423,"posY":55.751244} | 204 | Своя ACTIVE-поездка. Сохранена последняя позиция и обновлена позиция занятого самоката |
+| E023 | PUT /api/rides/{{rideId}}/finish | A | {"posX":37.618423,"posY":55.751244} | 200 | Своя ACTIVE-поездка; повтор допустим с теми же координатами. FINISHED, конечные координаты, длительность и сумма; самокат освобождён |
+| E024 | PUT /api/rides/{{rideId}}/review | A | {"rideRating":5,"scooterRating":4,"rideComment":"Хорошая поездка","scooterComment":"Удобный самокат"} | 200 | Своя FINISHED или PAID-поездка. Отзыв сохранён в Ride DB и возвращается в истории; повтор изменяет его |
+| E025 | POST /api/rides/{{rideId}}/pay | A | {} | 200 | Своя FINISHED-поездка, PAYMENT_MODE=educational. PAID и paidAt, paymentMode=EDUCATIONAL; сумма не меняется; повтор идемпотентен |
+| E032 | POST /api/documents/generate | A | {"docType":"RIDE_PAYMENT","sourceId":"{{rideId}}"} | 200 | Для чека: своя PAID-поездка; другие типы и тела см. ниже. Настоящий PDF, application/pdf, %PDF-, корректная кириллица; метаданные GENERATED |
+| E033 | GET /api/documents?limit=50&offset=0 | A | — | 200 | Только свои неудалённые метаданные, максимум limit; сохранить documentId |
+| E034 | GET /api/documents/{{documentId}} | A | — | 200 | Метаданные существующего своего документа |
+| E035 | GET /api/documents/{{documentId}}/download | A | — | 200 | Свой GENERATED-документ. PDF заново построен из сохранённого снимка данных, не JSON и не HTML |
+| E036 | DELETE /api/documents/{{documentId}} | A | — | 204 | Выполнять после скачивания и проверки снимка. Мягкое удаление, повтор DELETE тоже 204; GET/download затем 404 |
+| E059 | GET /api/reviews?limit=20&offset=0 | Нет | — | 200 | Нужна миграция отзывов 002; пустой список допустим. Публичный массив оценок, комментариев и reviewedAt; нет userId, rideId, логинов, сумм и координат |
+
+### 3.2 User: http://localhost:8081
+
+| ID | Метод / путь | Доступ | Тело JSON / query | Успех | Предусловия и результат |
+| --- | --- | --- | --- | --- | --- |
+| E004 | POST /api/users/register | Нет | {"login":"{{loginA}}","password":"Example-password-2026!","fullName":"Иван Петров Иванович","birthDate":"2000-05-17"} | 201 | Свободный loginA. Создан USER, пароль/hash не возвращаются; не автоматический вход |
+| E005 | POST /api/users/login | Нет | {"login":"{{loginA}}","password":"Example-password-2026!"} | 200 | Уже зарегистрирован loginA. accessToken, expiresInSeconds, user; сохранить tokenA и userA; BFF также создаёт HttpOnly JSESSIONID |
+| E006 | POST /api/users/logout | A | — | 204 | Выполнять в конце сценария, дальше нужен новый вход. Текущий JWT отозван; BFF-сессия удалена, если вызван BFF |
+| E009 | GET /api/users/exists?login={{loginA}} | Нет | — | 200 | {"exists":true}; новый незанятый логин → false |
+| E010 | GET /api/users/me | A | — | 200 | Профиль A, роль, дата рождения и актуальный blocked |
+| E042 | GET /api/users/validate | A | — | 204 | 204, без тела, токен действителен; не обращается к Moderation |
+| E043 | GET /api/users | ADMIN | — | 200 | Список активных пользователей: id, login, fullName |
+| E044 | GET /api/users/{{userA}} | A / ADMIN | — | 200 | Полный профиль A; USER B не имеет доступа |
+| E045 | GET /api/users/{{userA}}/blocked | A / ADMIN | — | 200 | {"blocked":false/true} |
+| E046 | GET /api/users/blocked?limit=50&offset=0 | ADMIN | — | 200 | Список блокировок из Moderation |
+| E047 | GET /api/users/reasons | ADMIN | — | 200 | Справочник причин: reasonType, description, durationSeconds |
+| E048 | POST /api/users/{{userA}}/ban | ADMIN | {"reason":"{{reason}}"} | 200 | Существующий тестовый userA; reason взять из справочника. Актуальный BlockStatus; повтор не создаёт вторую блокировку/не продлевает старую |
+| E049 | POST /api/users/{{userA}}/unban | ADMIN | — | 200 | Существующий тестовый userA; reason взять из справочника. blocked=false; повтор допустим |
+
+### 3.3 Moderation: http://localhost:8082
+
+| ID | Метод / путь | Доступ | Тело JSON / query | Успех | Предусловия и результат |
+| --- | --- | --- | --- | --- | --- |
+| E050 | GET /api/moderation/users/{{userA}}/status | A / ADMIN | — | 200 | BlockStatus: userId, blocked, reasonType, reason, blockedAt, blockedUntil |
+| E051 | GET /api/moderation/reasons | ADMIN | — | 200 | Справочник причин |
+| E052 | GET /api/moderation/users?blocked=true&limit=50&offset=0 | ADMIN | — | 200 | Список блокировок |
+| E053 | POST /api/moderation/users/{{userA}}/ban | ADMIN | {"reason":"{{reason}}"} | 200 | Использовать реальный тестовый userA. Прямой Moderation не проверяет наличие UUID в User. BlockStatus; blocked=true |
+| E054 | POST /api/moderation/users/{{userA}}/unban | ADMIN | — | 200 | Использовать реальный тестовый userA. Прямой Moderation не проверяет наличие UUID в User. BlockStatus; blocked=false |
+
+### 3.4 Scooter: http://localhost:8083
+
+| ID | Метод / путь | Доступ | Тело JSON / query | Успех | Предусловия и результат |
+| --- | --- | --- | --- | --- | --- |
+| E017 | GET /api/scooters | A | — | 200 | Настоящий каталог, все статусы; удалённых нет |
+| E018 | POST /api/scooters/nearest | A | {"posX":37.618423,"posY":55.751244} | 200 | Только READY; расстояния в метрах, по возрастанию; X=долгота, Y=широта |
+| E019 | GET /api/scooters/{{plate}} | A | — | 200 | plate взять из реального каталога. Карточка существующего самоката |
+| E056 | POST /api/scooters/{{internalPlate}}/reserve | SERVICE_KEY | {"rideId":"{{internalRideId}}","userId":"{{userA}}"} | 200 | Только отдельный тестовый самокат и отдельный UUID, не связанный с настоящей Ride-поездкой; порядок reserve → position → release. Резервирование |
+| E057 | POST /api/scooters/{{internalPlate}}/position | SERVICE_KEY | {"rideId":"{{internalRideId}}","posX":37.618423,"posY":55.751244} | 200 | Только отдельный тестовый самокат и отдельный UUID, не связанный с настоящей Ride-поездкой; порядок reserve → position → release. Позиция обновлена |
+| E058 | POST /api/scooters/{{internalPlate}}/release | SERVICE_KEY | {"rideId":"{{internalRideId}}","posX":37.618423,"posY":55.751244} | 200 | Только отдельный тестовый самокат и отдельный UUID, не связанный с настоящей Ride-поездкой; порядок reserve → position → release. Резервация закрыта, самокат освобождён |
+
+### 3.5 Ride: http://localhost:8084
+
+| ID | Метод / путь | Доступ | Тело JSON / query | Успех | Предусловия и результат |
+| --- | --- | --- | --- | --- | --- |
+| E013 | GET /api/rates | A | — | 200 | Активные тарифы, default, валюта, paymentMode; базовый 50 + 8/начатая минута |
+| E026 | GET /api/rides | A | — | 200 | Только история A; статусы ACTIVE/FINISHED/PAID, review=null либо объект |
+| E027 | POST /api/rides | A | {"numberPlate":"{{plate}}","posX":37.618423,"posY":55.751244} | 201 | READY plate; нет другой активной поездки у A/самоката; A не заблокирован. Начата одна ACTIVE-поездка, самокат IN_RIDE; сохранить rideId |
+| E028 | PUT /api/rides/{{rideId}}/position | A | {"posX":37.618423,"posY":55.751244} | 204 | Своя ACTIVE-поездка. Сохранена последняя позиция и обновлена позиция занятого самоката |
+| E029 | PUT /api/rides/{{rideId}}/finish | A | {"posX":37.618423,"posY":55.751244} | 200 | Своя ACTIVE-поездка; повтор допустим с теми же координатами. FINISHED, конечные координаты, длительность и сумма; самокат освобождён |
+| E030 | PUT /api/rides/{{rideId}}/review | A | {"rideRating":5,"scooterRating":4,"rideComment":"Хорошая поездка","scooterComment":"Удобный самокат"} | 200 | Своя FINISHED или PAID-поездка. Отзыв сохранён в Ride DB и возвращается в истории; повтор изменяет его |
+| E031 | POST /api/rides/{{rideId}}/pay | A | {} | 200 | Своя FINISHED-поездка, PAYMENT_MODE=educational. PAID и paidAt, paymentMode=EDUCATIONAL; сумма не меняется; повтор идемпотентен |
+| E055 | GET /api/rides/{{rideId}} | A | — | 200 | Одна своя поездка; B → 403 |
+| E060 | GET /api/reviews?limit=20&offset=0 | Нет | — | 200 | Нужна миграция отзывов 002; пустой список допустим. Публичный массив оценок, комментариев и reviewedAt; нет userId, rideId, логинов, сумм и координат |
+
+### 3.6 Documents: http://localhost:8085
+
+| ID | Метод / путь | Доступ | Тело JSON / query | Успех | Предусловия и результат |
+| --- | --- | --- | --- | --- | --- |
+| E037 | POST /api/documents/generate | A | {"userId":"{{userA}}","docType":"RIDE_PAYMENT","sourceId":"{{rideId}}"} | 200 | Для чека: своя PAID-поездка; другие типы и тела см. ниже. Настоящий PDF, application/pdf, %PDF-, корректная кириллица; метаданные GENERATED |
+| E038 | GET /api/documents?limit=50&offset=0 | A | — | 200 | Только свои неудалённые метаданные, максимум limit; сохранить documentId |
+| E039 | GET /api/documents/{{documentId}} | A | — | 200 | Метаданные существующего своего документа |
+| E040 | GET /api/documents/{{documentId}}/download | A | — | 200 | Свой GENERATED-документ. PDF заново построен из сохранённого снимка данных, не JSON и не HTML |
+| E041 | DELETE /api/documents/{{documentId}} | A | — | 204 | Выполнять после скачивания и проверки снимка. Мягкое удаление, повтор DELETE тоже 204; GET/download затем 404 |
+
+### 3.7 Важные различия маршрутов
+
+- BFF GET /api/rides — только список текущего пользователя. GET /api/rides/{id} существует **у Ride**, у BFF такого GET нет (404).
+- У BFF нет ADMIN-прокси /api/users/{id}/ban/unban и списка всех users; панель работает напрямую через **User 8081**. На User эти ручки реализованы.
+- BFF GET /api/scooters поддерживает только status=READY или available=true как фильтр свободных; другие status не передаёт и не отклоняет, а возвращает общий каталог. У Scooter доступны READY/IN_RIDE/CHARGING/REPAIR, неверный status — 400.
+- BFF POST documents/generate берёт userId из me, не доверяет userId тела. Для USER_BLOCKED/USER_HISTORY sourceId игнорируется и передаётся null. Прямой Documents требует свой userId в теле и отклоняет sourceId у неплатёжных типов (400).
+- GET /api/config защищён. Общего публичного исключения /api/auth/* нет. POST BFF logout без JWT допустим; прямой User logout с отозванным JWT — 401.
+- HTML/страницы и скрытые SQL-поля не увеличивают число API-операций. PUT scooter/status, изменение профиля, удаление аккаунта, CRUD тарифов/самокатов, загрузка фото парковки и банковская платёжная ручка не реализованы.
+
+## 4. Поля ответов и полные JSON-примеры
+
+### 4.1 User, LoginResponse, UserSummary
 
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
-  "login": "ivan", "role": "USER", "fullName": "Иван Петров",
-  "birthDate": "2000-05-17", "avatarUrl": null, "deleted": false, "blocked": false
+  "login": "ivan.petrov",
+  "role": "USER",
+  "fullName": "Иван Петров Иванович",
+  "birthDate": "2000-05-17",
+  "avatarUrl": null,
+  "deleted": false,
+  "blocked": false
 }
 ```
 
-При login BFF требует непустой accessToken, целочисленный expiresInSeconds
-от 1 до Integer.MAX_VALUE и user с UUID id; иначе 502. Остальные отсутствующие
-поля профиля при разборе могут стать null/false, но сервисам следует выдавать
-полный объект выше. Удалённый пользователь из login-ответа не принимается (403).
-BFF совместим также со старым булевым ответом blocked `true`/`false`, однако
-готовый User выдаёт объект. Пустой/неверный успешный blocked → 502; 5xx/сеть → 503;
-только явный blocked=true становится запретом старта 403.
-
-**JWT:** только User выдаёт RS256. Claim userId — UUID, role — USER/ADMIN;
-также есть sub=userId, jti (UUID токена), iss, iat, exp. Issuer по умолчанию
-`scooter-user-service`, TTL по умолчанию 3600 секунд. Приватный ключ остаётся
-только у User; публичный ключ передаётся сервисам с локальной проверкой.
-User дополнительно проверяет хеш/действительность токена в БД. BFF не подписывает
-JWT, не хранит собственный JWT-секрет и проверяет токен через validate.
-Для немедленного учёта отзыва другим сервисам одной проверки подписи недостаточно.
-
-**User → Moderation (реализовано в User):** исходный Bearer передаётся без
-изменений; status/ban/unban должны вернуть объект с тем же userId и boolean
-blocked, списки/reasons — массивы. Таймаут/сеть, 429 и 5xx → 503; неверный JSON,
-неверный userId/blocked, неожиданный redirect/404 → 502. 400/401/403/409
-Moderation сохраняются как JSON-ошибка. blocked не хранится в User DB.
-Новый пользователь при регистрации получает blocked=false без вызова Moderation
-(новый UUID, JWT ещё нет). Login сначала сохраняет токен, затем вызывает status;
-если Moderation не ответил корректно, новый токен отзывается, login не объявляется успешным.
-me/byId/blocked вызывают Moderation; validate — нет. Нельзя делать цикл
-Moderation status → полный User profile → Moderation status.
-
-**Запуск User:** PostgreSQL, схема users/tokens из его архива, JWT-пара ключей.
-Обязательные переменные: DB_URL, DB_USER, DB_PASSWORD, JWT_PRIVATE_KEY_PATH,
-JWT_PUBLIC_KEY_PATH; значения секретов вводятся вне документа. Адрес Moderation —
-MODERATION_BASE_URL, по умолчанию `http://localhost:8082` (без завершающего `/`).
-Для прямых browser-вызовов панели User CORS_ALLOWED_ORIGINS по умолчанию включает
-`http://localhost:8082`; при другом origin его нужно настроить. BFF своей БД не имеет.
-
-### 3.2 Moderation Service (нет прямого REST-клиента BFF)
-
-Прямого REST-клиента Moderation в BFF нет; отдельно настроен URL страницы панели для browser-редиректа ADMIN. Согласно текущему коду «забанен ли пользователь» выясняется через User Service (`/api/users/{id}/blocked`), а тот спрашивает Moderation — это соответствует формулировке «BFF обращается через users». Вызовы из User и исправленного Documents (GET status) реализованы и проверены с настоящим Moderation. Порт локального стенда — `8082`; готовый User читает адрес из MODERATION_BASE_URL; адрес для Documents настраивает его команда. У BFF есть только отдельная настройка URL страницы панели.
-
-В готовом User уже есть GET `/api/users`, GET `/api/users/{id}`, ban/unban/blocked/reasons (§3.1). Совместимость ответов проверена с исправленным Moderation. Существование пользователя перед ban/unban проверяет User; не следует вызывать из status полный User profile, чтобы не создать цикл.
-
-**Проверена актуальная версия services/moderation.** Для полного стенда собирается
-этот исходник. Исторический патч исходного архива сохранён в integrations/moderation.
-В исходном архиве сервер только декодировал JWT: можно было подделать ADMIN,
-а выход не прекращал доступ к Moderation. Патч добавляет обязательный вызов
-User validate и реальный отзыв JWT при выходе из панели.
-
-Список содержит заблокированных пользователей с причиной и сроком, без истории прошлых банов. API и правила:
-
-| Эндпоинт | Тело / параметры | Ответ |
-| --- | --- | --- |
-| `GET /api/moderation/users/{userId}/status` | — | `200 {"userId": "550e8400-e29b-41d4-a716-446655440000", "blocked": true, "reasonType": "RIDE_DANGEROUS", "reason": "Агрессивное / опасное вождение", "blockedAt": "2026-10-10T12:00:00Z", "blockedUntil": "2026-10-17T12:00:00Z"}` |
-| `POST /api/moderation/users/{userId}/ban` (ADMIN) | `{"reason": "RIDE_DANGEROUS"}` | `200` тот же объект статуса |
-| `POST /api/moderation/users/{userId}/unban` (ADMIN) | — | `200` объект статуса |
-| `GET /api/moderation/users?blocked=true` (ADMIN) | необязательные query `limit` 1–500 (default 50), `offset` ≥ 0 (default 0) | `200` массив объектов статуса только действующих блокировок, новые первыми; пусто — `[]` |
-| `GET /api/moderation/reasons` (ADMIN) | — | `200 [{"reasonType": "RIDE_DANGEROUS", "description": "Агрессивное / опасное вождение", "durationSeconds": 604800}]`; `durationSeconds: null` = навсегда |
-
-Правила для Moderation:
-
-- **Токен:** вызывающий сервис пробрасывает в Moderation JWT исходного запроса без изменений (как и остальные сервисы, см. «Общие правила»). В готовом User выбран исходный JWT; Moderation должен валидировать его и извлекать role/userId. Сервисный токен остаётся только альтернативой для будущих межсервисных действий, сейчас User так не вызывает.
-- **Доступ к `status`:** ADMIN или сам пользователь (`userId` из JWT совпадает с `{userId}`), иначе `403`. Так Documents может вызывать `status` с JWT пользователя, который запрашивает документ.
-- **Причины:** допустимые причины и их сроки заданы справочником Moderation (`GET /api/moderation/reasons`), свободный текст не принимается. В запросе `ban` поле `reason` — имя причины (`reasonType`), например `RIDE_DANGEROUS`; неизвестное или пустое значение даёт `400`. В ответе `reasonType` — имя причины, `reason` — её описание.
-- **Срок блокировки:** определяется причиной и фиксируется при `ban`: `blockedUntil = blockedAt + длительность причины`. `blockedUntil: null` — бессрочно, снимается только через `unban`. По истечении срока `status` отвечает `blocked: false`, а запись пропадает из списка.
-- **Пользователь без записи:** `status` отвечает `200` с `"blocked": false`; `reasonType`, `reason`, `blockedAt`, `blockedUntil` = `null`. Это значение по умолчанию, а не `404`.
-- **`unban`:** пользователь убирается из списка заблокированных, его статус становится `"blocked": false`, а `reasonType`, `reason`, `blockedAt`, `blockedUntil` = `null`. Прошлые причины не сохраняются.
-- **Повторные вызовы идемпотентны:** `ban` уже заблокированного → `200` с текущим объектом статуса (причина и сроки не перезаписываются); `unban` незаблокированного → `200` с `"blocked": false`.
-- **Список и справочник причин** доступны только ADMIN.
-- **Ошибки** (формат `{"error": "..."}`): `400` — `userId` не UUID, некорректное тело, неизвестная причина или параметры `limit`/`offset`, `401` — нет или невалидный токен, `403` — нет прав.
-- **Источник правды для `blocked`:** значение хранит и отдаёт Moderation; поле `blocked` в объекте User Service берёт из ответа `status`, а не хранит у себя **[проверено с исправленным Moderation и настоящим User]**.
-- **Недоступность Moderation:** User Service должен вернуть `503` из `/api/users/{id}/blocked`, а не «заблокирован»; это согласуется с вопросом №11 **[реализовано в User; ответ 503 при недоступном User также проверен в Moderation]**.
-
-**Проверка JWT в исправленном Moderation:** каждый защищённый запрос вызывает
-User `GET /api/users/validate` с исходным Bearer; только 204 допускает запрос.
-401 → 401, таймаут/сеть/неожиданный ответ → 503. Redirect не выполняется.
-Это обеспечивает проверку RS256, issuer/exp, текущей роли, существования
-пользователя и отзыва токена силами User. Декодирование payload само по себе
-не считается проверкой. User validate не вызывает Moderation, рекурсии нет.
-
-**Панель:** получает пользователей через User GET `/api/users`, блокировки —
-`/api/users/blocked?limit=200&offset=...`, причины — `/api/users/reasons`;
-ban/unban вызывает через `/api/users/{id}/ban` и `/unban` (User проверяет
-существование пользователя). Все запросы содержат Bearer. Прямого BFF-прокси
-для админских действий нет. Fragment accessToken переносится в sessionStorage
-и сразу удаляется из адреса. Выход описан в §2.13.
-
-**Запуск Moderation:** Java 17+ / Tomcat 10.1+ с Servlet 6.0; своя PostgreSQL БД,
-предварительно выполнить `src/main/resources/schema.sql` из его проекта.
-DB_URL/DB_USER/DB_PASSWORD обязательны. USER_BASE_URL по умолчанию
-`http://localhost:8081` — адрес User для серверной проверки. ADMIN_USER_BASE_URL
-задаёт адрес User для браузера (default равен USER_BASE_URL), BFF_LOGIN_URL —
-адрес входа (default `http://localhost:8080/login.jsp`). Настройки страницы
-возвращает `/admin/js/config.js`; секретов в ответе нет. В локальном стенде все
-три WAR разворачиваются в корне на разных портах. Никакие ключи JWT в Moderation
-не копируются: выбран validate. У User должен быть разрешён CORS origin панели.
-
-### 3.3 Scooters Service (`:8083`)
-
-**Реализовано и проверено в services/scooter.** Внешние вызовы требуют JWT,
-проверяемый через User validate; отозванный JWT даёт 401.
-
-| Эндпоинт | Запрос | Ответ |
-| --- | --- | --- |
-| `GET /api/scooters` | необязательный status=READY/IN_RIDE/CHARGING/REPAIR | 200 JSON-массив неудалённых самокатов |
-| `POST /api/scooters/nearest` | posX/posY — обязательные конечные JSON-числа | 200 массив только READY по возрастанию distance; при равенстве по numberPlate |
-| `GET /api/scooters/{numberPlate}` | URL-encoded номер | 200 объект, 404 если нет/удалён |
-| `POST /api/scooters/{numberPlate}/reserve` | служебный X-Service-Key; rideId/userId — UUID | атомарно READY → IN_RIDE, 200; занято/заряд 0 → 409 |
-| `POST /api/scooters/{numberPlate}/position` | служебный X-Service-Key; rideId, posX/posY | 200 объект самоката; только текущая активная резервация, иначе 409 |
-| `POST /api/scooters/{numberPlate}/release` | служебный X-Service-Key; rideId; optional posX/posY (обе или ни одной) | освобождение собственного rideId, 200; чужой номер операции → 409 |
-
-Объект самоката:
+User: id UUID, login/fullName строки, role USER/ADMIN, birthDate date, avatarUrl string|null, deleted/blocked boolean. Пароль и passwordHash не возвращаются. blocked получен из Moderation, не хранится в User DB. USER не может читать чужой профиль; ADMIN может читать существующий активный профиль.
 
 ```json
-{ "numberPlate": "A111AA77", "charge": 95, "status": "READY", "posX": 10.0, "posY": 15.0, "distance": 1.5 }
+{
+  "accessToken": "<JWT>",
+  "expiresInSeconds": 3600,
+  "user": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "login": "ivan.petrov",
+    "role": "USER",
+    "fullName": "Иван Петров Иванович",
+    "birthDate": "2000-05-17",
+    "avatarUrl": null,
+    "deleted": false,
+    "blocked": false
+  }
+}
 ```
 
-Без nearest distance может быть null. Старые envelopes scooters/scooter и поля
-numericPlate/positionX/positionY заменены согласованным wire API; в SQL имена
-numeric_plate/position_x/position_y остаются внутренними. Статусы READY,
-IN_RIDE, CHARGING, REPAIR. Примерные самокаты добавляются при первой инициализации.
-Координаты double precision, nearest использует Math.hypot: исходное предложение
-`sqrt((x-posX)^2 + (y-posY)^2)` для условной сетки. Для географических градусов
-это не расстояние в метрах. BFF не округляет и не выбирает географическую метрику.
-В сдаваемой версии выбрана учебная сетка с диапазоном ±1000000; разряд батареи по расстоянию
-не вычисляется. Обе конечные координаты сохраняются при освобождении.
-
-Служебные reserve/release/position доступны только Ride с общим SERVICE_API_KEY,
-а не по обычному пользовательскому JWT. Ключ создаётся автоматически в Compose,
-не попадает в браузер. Это исключение из правила передачи исходного JWT:
-восстановление незавершённой операции должно работать и после отзыва JWT пользователя.
-На rideId хранится постоянная запись операции: повтор reserve идемпотентен,
-release завершённой операции не освобождает новый rideId. Release до задержанного
-reserve фиксирует отмену, и поздний reserve получает 409. Изменение состояния
-и записи операции выполняется транзакционно.
-
-### 3.4 Ride Service (`:8084`)
-
-**Реализовано и проверено в services/ride.** Защищённые вызовы валидируют JWT
-через User. Бан дополнительно проверяется только при старте; finish/pay/history
-не требуют доступного Moderation. Обычный пользователь читает только свои поездки.
-
-| Эндпоинт | Тело / параметры | Ответ |
-| --- | --- | --- |
-| `POST /api/rides` | `{"numberPlate": "A123BC", "rateId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8", "posX": 10, "posY": 24}`; `rateId`, `posX`, `posY` могут быть `null` | `201` объект поездки со статусом `ACTIVE`. `409`, если самокат не `READY` или у пользователя уже есть активная поездка |
-| `PUT /api/rides/{id}/position` | posX/posY, дробные числа ±1000000 | 204; чужая — 403, не ACTIVE — 409, неверные координаты — 400 |
-| `PUT /api/rides/{id}/finish` | `{"posX": 15, "posY": 30}` | `200` поездка со статусом `FINISHED` и рассчитанной `amount`. `404` — нет поездки; `403` — чужая; `409` — другие координаты повторного finish/неподходящее состояние |
-| `POST /api/rides/{id}/pay` | `{}` | `200` поездка со статусом `PAID`. Идемпотентно: повтор на оплаченной → `200` с тем же объектом; `409` если поездка ещё не завершена |
-| `GET /api/rides?userId=550e8400-e29b-41d4-a716-446655440000` | query `userId` | `200` массив поездок пользователя, новые первыми |
-
-**Реализован для Documents:**
-`GET /api/rides/{id}` с Bearer и проверкой владельца. Это сервисный endpoint Ride,
-в BFF GET одной поездки не опубликован. В Ride этот endpoint возвращает 200/403/404. Documents вызывает его;
-для чека требует PAID, UUID id/userId, numberPlate, startedAt, finishedAt, amount,
-currency, paidAt. amount ≥ 0, currency — 3 заглавные латинские буквы,
-startedAt ≤ finishedAt ≤ paidAt. Чужой владелец → 403, неоплаченная поездка → 409,
-неполный/подменённый успешный ответ Ride → 502. Валюта RUB не подставляется.
-GET списка должен возвращать JSON-массив собственных поездок с id/userId,
-numberPlate/status/startedAt; PAID должен включать перечисленные платёжные поля.
-Эти требования проверены на настоящем Ride и настоящем Documents.
-
-Правила для Ride:
-
-- `userId` при старте берётся из JWT, в теле его нет.
-- При `GET ?userId=` нужно сверять `userId` с JWT: BFF не проверяет владельца поездки при `finish`/`pay`, это должен делать Ride.
-
-Пример объекта поездки (поля могут быть null до finish/pay):
+UserSummary в ADMIN-списке: только id, login, fullName. Список не является выгрузкой паролей/дат рождения/токенов.
 
 ```json
-{ "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7", "userId": "550e8400-e29b-41d4-a716-446655440000", "numberPlate": "A123BC", "rateId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8", "status": "PAID",
-  "startedAt": "2026-10-16T07:40:00Z", "finishedAt": "2026-10-16T08:05:00Z",
-  "startPosX": 10, "startPosY": 24, "endPosX": 15, "endPosY": 30,
-  "durationSeconds": 1500, "amount": 250.00, "currency": "RUB", "paidAt": "2026-10-16T08:06:10Z", "paymentMode": "EDUCATIONAL" }
+[
+  {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "login": "ivan.petrov",
+    "fullName": "Иван Петров Иванович"
+  }
+]
 ```
 
-Статусы для клиента: `ACTIVE` → `FINISHED` → `PAID`.
-Finish с теми же координатами можно повторить: возвращается сохранённый результат;
-с другими координатами — 409. Повтор/конкурентный pay возвращает один paidAt.
-Поездки пользователя/самоката ограничены уникальными индексами БД.
+### 4.2 Scooter и Rate
 
-`GET /api/rates` доступен в Ride и через BFF. Возвращает массив id/name/unlockFee/
-pricePerMinute/currency/default/paymentMode. Если rateId null, Ride выбирает
-активный тариф default. Сумма = unlockFee + pricePerMinute × max(1, ceil(seconds/60));
-durationSeconds округляется вверх от точного времени поездки. Тариф записывается
-снимком unlockFee/pricePerMinute/currency в поездку. По согласованию default 50/8 RUB.
+```json
+{
+  "numberPlate": "A111AA77",
+  "charge": 95,
+  "status": "READY",
+  "posX": 37.618423,
+  "posY": 55.751244,
+  "distance": 125.4
+}
+```
 
-Ride при старте сначала фиксирует STARTING, затем резервирует Scooter и включает
-ACTIVE. При сбое сохраняется CANCELLING; фоновая обработка освобождает только
-свой rideId. При finish сначала фиксируются время/координаты/сумма и FINISHING,
-затем освобождается Scooter и сохраняется FINISHED. Состояния восстанавливаются
-после перезапуска. STARTING/CANCELLING не входят в публичную историю; FINISHING
-временно выдаётся клиенту как ACTIVE, до завершения восстановления. Повтор не
-пересчитывает сумму за время недоступности сервиса.
+charge — целое 0–100; status — READY/IN_RIDE/CHARGING/REPAIR. posX/posY — числа. distance — число метров только для nearest; в обычной карточке/каталоге может присутствовать null. SQL-имена numeric_plate/position_x/position_y не являются wire-полями.
 
-При PAYMENT_MODE=educational pay сохраняет PAID **без банковского списания**.
-Без этой настройки оплата отключена (503). JSON поездки содержит paymentMode
-EDUCATIONAL/DISABLED. У поездки сохраняется режим, а при оплате он фиксируется
-в БД как EDUCATIONAL: смена конфигурации не убирает пометку старого учебного чека.
-В интерфейсе и PDF-чеке учебный режим явно обозначен.
+```json
+[
+  {
+    "id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+    "name": "Учебный поминутный",
+    "unlockFee": 50.0,
+    "pricePerMinute": 8.0,
+    "currency": "RUB",
+    "default": true,
+    "paymentMode": "EDUCATIONAL"
+  }
+]
+```
 
-### 3.5 Documents Service (`:8085`)
+Rate возвращает активные тарифы. default boolean; не isDefault. paymentMode EDUCATIONAL при PAYMENT_MODE=educational, иначе DISABLED. Один активный default. Произвольный rateId выбирает только существующий активный тариф, иначе 404.
 
-**Проверена актуальная версия services/documents на основе Documents_for_integration.zip.** Актуальные исходники
-находятся в `services/documents`; первоначальный diff сохранён в integrations/documents.
-README архива прочитан: публичный ключ User, локальный шрифт с кириллицей и
-Ride GET реализованы и проверены в полном стенде. BFF уже
-поддерживает три типа, историю, метаданные, повторное скачивание и удаление. Типы:
+### 4.3 Ride и приватный отзыв
 
-- `RIDE_PAYMENT` — подтверждение оплаты поездки.
-- `USER_BLOCKED` — уведомление о блокировке пользователя.
-- `USER_HISTORY` — история поездок за выбранный период.
+```json
+{
+  "id": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "numberPlate": "A111AA77",
+  "rateId": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+  "status": "PAID",
+  "paymentMode": "EDUCATIONAL",
+  "startedAt": "2026-10-28T12:00:00Z",
+  "finishedAt": "2026-10-28T12:01:00Z",
+  "startPosX": 37.618423,
+  "startPosY": 55.751244,
+  "endPosX": 37.619,
+  "endPosY": 55.752,
+  "lastPosX": 37.6188,
+  "lastPosY": 55.7518,
+  "lastPositionAt": "2026-10-28T12:00:30Z",
+  "durationSeconds": 60,
+  "amount": 58.0,
+  "currency": "RUB",
+  "paidAt": "2026-10-28T12:01:10Z",
+  "review": {
+    "rideRating": 5,
+    "scooterRating": 4,
+    "rideComment": "Удобная поездка",
+    "scooterComment": "Хороший самокат",
+    "reviewedAt": "2026-10-28T12:02:00Z"
+  }
+}
+```
 
-| Эндпоинт | Тело / параметры запроса | Ответ |
-|---|---|---|
-| `POST /api/documents/generate` | `userId`, `docType`, `sourceId`, `from`, `to` | `200` + PDF (`application/pdf`) |
-| `GET /api/documents` | JWT; limit=50 (1..100), offset=0 (≥0) | `200` массив собственных неудалённых записей, новые первыми |
-| `GET /api/documents/{id}` | UUID документа | `200` метаданные; чужой — 403, удалённый/отсутствующий — 404 |
-| `GET /api/documents/{id}/download` | UUID документа | `200` PDF из сохранённого снимка; не создаёт новую запись |
-| `DELETE /api/documents/{id}` | UUID документа | `204`, soft delete; повтор владельцем — 204, чужой — 403 |
+id/userId/rateId — UUID; numberPlate/status/currency/paymentMode — строки. Время — строки ISO-8601 или null. Координаты — number|null. durationSeconds — целое|null; amount — number|null. До завершения finishedAt/endPos/durationSeconds/amount/paidAt могут быть null; до первой позиции lastPos/lastPositionAt могут быть null; до первого отзыва review=null. На FINISHED paidAt=null. Тарифный снимок unlockFee/pricePerMinute хранится внутренне, в Ride JSON не раскрывается. Объект ошибки не должен интерпретироваться как поездка.
 
-В исправленном Documents JWT проверяется локально: только RS256, issuer,
-обязательный exp, UUID userId с тем же sub. Затем до записи метаданных вызывается
-User GET `/api/users/validate`: только 204 разрешает продолжение, 401 запрещает,
-сбой/неожиданный ответ → 503. Для всех внешних вызовов используется исходный JWT.
-userId тела обязан совпадать с userId JWT; клиент BFF сам подставляет его из me.
+### 4.4 PublicReview (без идентификаторов)
 
-Тело — JSON-объект до 64 KiB: повторные поля/хвосты/неверные типы/UUID/даты → 400,
-большое тело → 413, Content-Type не application/json → 415. На /generate разрешён только POST (иначе 405).
-UUID и даты — строки. Ответы PDF и ошибки не кешируются. Ошибки JSON {"error":"..."}.
-Успешный неправильный JSON/Content-Type/отсутствующие поля внешнего API → 502;
-401/403/404/409 сохраняются, 429/5xx/сеть → 503. Авторизационные данные и тела
-внешних ошибок в сообщения не включаются.
+GET /api/reviews BFF/Ride возвращает непосредственно массив:
 
-**RIDE_PAYMENT:**
+```json
+[
+  {
+    "rideRating": 5,
+    "scooterRating": 4,
+    "rideComment": "Удобная поездка",
+    "scooterComment": "Хороший самокат",
+    "reviewedAt": "2026-10-28T12:02:00Z"
+  }
+]
+```
+
+Ровно пять полей: rideRating, scooterRating — int 1–5; rideComment, scooterComment — строки (пустая допустима, для legacy-записей возможен null); reviewedAt — ISO-8601. Нет userId/rideId/логина/имени/номера/координат/суммы. Сортировка reviewedAt DESC, внутренний id DESC при равенстве. Публичны сохранённые отзывы FINISHED/PAID. Комментарий является пользовательским текстом; UI его экранирует. Автор на главной — «Пользователь ScootX».
+
+### 4.5 BlockStatus и Reason
+
+```json
+{
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "blocked": true,
+  "reasonType": "RIDE_DANGEROUS",
+  "reason": "Агрессивное / опасное вождение",
+  "blockedAt": "2026-10-28T12:00:00Z",
+  "blockedUntil": "2026-11-04T12:00:00Z"
+}
+```
+
+При blocked=false reasonType/reason/blockedAt/blockedUntil равны null. Для бессрочного действующего бана blockedUntil=null. В запросе ban поле reason — **reasonType**, не описание.
+
+```json
+[
+  {
+    "reasonType": "RIDE_DANGEROUS",
+    "description": "Агрессивное / опасное вождение",
+    "durationSeconds": 604800
+  }
+]
+```
+
+### 4.6 DocumentMetadata
+
+```json
+{
+  "id": "df2f1b4a-f284-4a94-b0e2-03b75490ab1e",
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "docType": "RIDE_PAYMENT",
+  "sourceId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "from": null,
+  "to": null,
+  "status": "GENERATED",
+  "createdAt": "2026-10-28T12:03:00Z",
+  "generatedAt": "2026-10-28T12:03:01Z",
+  "snapshotAvailable": true
+}
+```
+
+id/userId/sourceId — UUID (sourceId nullable). from/to — date|null. status=PENDING/GENERATED/FAILED. createdAt — время, generatedAt nullable. snapshotAvailable означает наличие JSON-снимка исходных данных, а не сохранённого PDF-файла. Временные внутренние updated_at/deleted_at не обязаны публиковаться в DTO.
+
+## 5. Регистрация, вход, browser-переходы и выход
+
+### 5.1 Регистрация
+
+POST BFF /api/auth/register либо прямой User /api/users/register. Обязательны login, password, fullName, birthDate. avatarUrl необязателен/null. BFF проверяет и пересылает поля, роль не передаёт; User всегда создаёт USER. Регистрация не создаёт BFF-сессию, ScootX после неё отдельно вызывает login.
+
+- login: trim и lower-case Locale.ROOT на сервере, 3–64 ASCII `[a-z0-9_.-]`, уникален после нормализации. Неверный → 400, занятый → 409.
+- password: при регистрации минимум 8 единиц UTF-16 (Java/JS length), максимум **72 байта UTF-8**, без NUL; при login нет требования длины 8, но действуют непустота/NUL/байтовый предел. Bcrypt, cost по умолчанию 12. Повтор пароля — только клиентское поле confirm, в API не требуется.
+- fullName: до 200 символов после trim, без ISO-control; 2–4 слова с одним пробелом между словами, минимум 2 буквы в каждом слове. Компонент: заглавная + строчные; дефис и прямой/типографский апостроф допускаются между такими компонентами. Один алфавит на всё ФИО — кириллица либо латиница, без смешения. Примеры: Иван Петров, Анна-Мария Петрова, John O’Connor. Это проверка формата, а не проверка подлинности личности/имени.
+- birthDate: ISO date, не ранее 1900-01-01 и **не позже today(UTC) minus 16 years**. Ровно 16 лет разрешено, младше — 400. Проверяется в UI, BFF и User. Старые аккаунты автоматически не переписываются.
+- avatarUrl: null/пустая строка → отсутствует; иначе максимум 2048, абсолютный http/https с host, без userInfo. Передача URL не означает загрузку файла аватара сервером.
+
+Запрос:
+
+```json
+{
+  "login": "ivan.petrov",
+  "password": "Example-password-2026!",
+  "fullName": "Иван Петров Иванович",
+  "birthDate": "2000-05-17",
+  "avatarUrl": null
+}
+```
+
+Ответ 201 — User из §4.1. Login 200 — LoginResponse. Неверный логин/пароль при входе, удалённый пользователь → 401; недоступность Moderation/БД при login → ошибка, не ложный успешный вход. User сначала сохраняет токен, читает status в Moderation и при сбое отзывает новый токен.
+
+### 5.2 URL и действующая сессия
+
+| URL BFF | Поведение |
+| --- | --- |
+| GET / | Главная ScootX |
+| GET /index.jsp | Главная ScootX |
+| GET /login.jsp | 302 → /auth/entry |
+| GET /auth/entry | Проверка текущего Bearer/сессии: без действующей авторизации → /?auth=login; USER → /?account=profile; ADMIN → панель с JWT во fragment |
+| GET /register.jsp | 302 → /?auth=register |
+| GET /main.jsp | 302 → /?account=profile |
+| GET /?auth=login | Без сессии форма входа; USER кабинет; ADMIN переходит через /auth/entry в панель |
+| GET /?auth=register | Форма регистрации |
+| GET /?account=profile\|rides\|saved\|documents | Соответствующий диалог при входе, иначе форма входа |
+| /#home, /#scooters, /#performance, /#support | Якоря одной HTML-страницы, не отдельные API |
+| GET /logout | HTML-подтверждение выхода, без отзыва JWT |
+| POST /logout | Отзыв текущего токена и закрытие BFF-сессии, 303 → login.jsp |
+
+При успешном POST login пользователь USER остаётся в BFF, ADMIN перенаправляется браузером на:
+
+`http://localhost:8082/admin/users.html#accessToken=<encodeURIComponent(JWT)>`
+
+Точный адрес берётся из GET /api/config (`moderationPanelUrl`). Панель сохраняет токен в sessionStorage и удаляет fragment. В URL query и localStorage BFF JWT не кладётся. При повторном login.jsp действующая сессия не удаляется и JWT не отзывается. Чтобы сменить USER на другой аккаунт/ADMIN, сначала выйти либо использовать отдельный профиль браузера.
+
+### 5.3 Выход
+
+BFF POST /api/auth/logout либо POST /logout вызывает User POST /api/users/logout с текущим JWT и всегда закрывает свою сессию. При успехе API — 204; повтор BFF без токена допустим (204). Если User ответил 401, токен уже непригоден — BFF считает выход завершённым. Если отзыв не подтверждён из-за ошибки/недоступности User, BFF возвращает ошибку и явно не утверждает успешный общий отзыв, хотя локальная сессия закрыта. GET /api/auth/logout с действующим JWT — 405 (без него раньше может быть 401).
+
+Панель вызывает прямой User logout и при успехе/уже недействующем токене очищает sessionStorage, идёт на BFF login.jsp. При сетевом сбое показывает ошибку и позволяет повторить. User logout отзывает текущий токен, а не все сессии всех устройств. Все защищённые сервисы учитывают отзыв через validate. Повышение роли штатным CLI отдельно отзывает старые токены аккаунта.
+
+## 6. Самокаты, GPS и внутренние операции
+
+### 6.1 Координаты и nearest
+
+Согласованное значение **posX = longitude (долгота), posY = latitude (широта), градусы**. Nearest требует оба конечных JSON-числа: X от -180 до 180, Y от -90 до 90. Расстояние — Haversine с R=6371008.8 м, по возрастанию; при равенстве — numberPlate. В UI <1000 м отображаются метры, дальше километры. Только READY, автоматического радиуса отсечения нет.
+
+В BFF общая числовая проверка координат и в Ride/внутренних position/release исторически допускают конечные числа до ±1000000; **это предел реализации, не единицы сетки и не расстояние в метрах**. Строгие GPS-границы применяет nearest, клиент передаёт валидные GPS. Полного геозонирования/подтверждения реальной парковки/маршрута нет. Некорректные сохранённые GPS при nearest → 503 вместо ложного расстояния. Примерные старые SQL-координаты интерпретируются как географические точки; автоматического перемещения к пользователю нет.
+
+Нормальный GET /api/scooters — все неудалённые состояния; нет скрытого создания случайных самокатов. 404 карточки — нет/удалён. Старые numericPlate/positionX/positionY/envelopes не wire-контракт.
+
+### 6.2 Отказ в разрешении
+
+При разрешении геолокации каталог запрашивает nearest автоматически. При отказе, недоступности, тайм-ауте — GET общего каталога, без расстояний/сортировки по близости; сообщение причины и кнопка повторной геолокации. Ручных полей X/Y и старой кнопки «Найти по координатам» нет.
+
+Старт без GPS берёт актуальную позицию выбранного READY-самоката из его карточки. Завершение сначала пробует GPS; при ошибке пользователь может отдельно подтвердить последнюю сохранённую позицию поездки (lastPos, иначе startPos). Отмена подтверждения ничего не завершает; без сохранённой валидной позиции этот вариант недоступен. Это не выдаётся за измерение фактической позиции. Повтор finish после потерянного ответа использует ту же первую позицию.
+
+### 6.3 Reserve / position / release
+
+Доступ только с `X-Service-Key: <общий SERVICE_API_KEY>`. Ride вызывает их напрямую; браузер ключ не получает. Это исключение из передачи пользовательского Bearer: восстановление операции должно работать после его отзыва.
+
+Reserve body:
+
+```json
+{
+  "rideId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "userId": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+Position body:
+
+```json
+{
+  "rideId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "posX": 37.619,
+  "posY": 55.752
+}
+```
+
+Release body:
+
+```json
+{
+  "rideId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "posX": 37.619,
+  "posY": 55.752
+}
+```
+
+Для release координаты необязательны, но обе либо ни одной. Возвращается 200 с текущим Scooter. Reserve: атомарно READY → IN_RIDE, заряд должен быть >0; занято/не READY/несовместимая операция → 409. Position допустим только на текущем IN_RIDE и с его reservation_id, иначе 409. Release переводит собственную резервацию в READY и сохраняет конечные координаты.
+
+Повтор того же reserve идемпотентен; другой user/plate для того же rideId — 409. Постоянные tombstones в scooter_reservations предотвращают поздний reserve после отмены. Повтор release не освобождает новую резервацию; release до запоздалого reserve закрывает операцию, поздний reserve — 409. Неверные UUID/типы/неполная пара — 400. Использовать реальные номера; неизвестная карточка может дать 404. Расход батареи автоматически по расстоянию не имитируется.
+
+## 7. Поездки, тарифы, оплата и отзывы
+
+### 7.1 Старт и время
+
+numberPlate обязателен; rateId — UUID|null, null выбирает активный default. В API start posX/posY допускают null, UI передаёт валидную пару из GPS/карточки. userId из тела не назначает владельца: он берётся из JWT. BFF перед стартом запрашивает User me/blocked; при blocked/deleted — запрет, при недоступной проверке — ошибка. Прямой Ride тоже проверяет бан при старте.
+
+Одна активная операция на пользователя и самокат обеспечена уникальными индексами и резервированием. Повторный start не создаёт новую поездку поверх существующей, возвращается 409. Несуществующий активный тариф — 404, неизвестный самокат — 404, занятый/разряженный — 409. startedAt фиксируется сервером после успешного резервирования.
+
+Внешние состояния: **ACTIVE → FINISHED → PAID**. В SQL есть STARTING/CANCELLING/FINISHING для восстановления: они не являются новым пользовательским CANCELLED. Список скрывает STARTING/CANCELLING; FINISHING сериализуется как ACTIVE, запрос завершения может ещё обрабатываться. Фоновое восстановление повторяет отмену/освобождение, не создавая двойную аренду.
+
+### 7.2 Position / finish
+
+Position owner-only и только ACTIVE, успех 204. Сохраняет lastPosX/lastPosY/lastPositionAt и обновляет текущий Scooter служебной ручкой. Истории всех точек маршрута нет.
+
+Finish owner-only, обе конечные координаты обязательны. Первый запрос фиксирует finishedAt/endPos/durationSeconds/amount, переводит операцию во внутренний FINISHING и освобождает Scooter. Длительность округляется вверх до целой секунды, не отрицательна. После успешного освобождения — FINISHED. При сбое освобождения повтор/recovery использует уже зафиксированные время/сумму. На FINISHED/PAID повтор с теми же координатами — 200, с другими — 409. Чужая поездка — 403, корректный неизвестный UUID — 404; неверный UUID пути обычно 404 (у BFF review возможен 400).
+
+### 7.3 Оплата
+
+Учебный тариф: unlockFee=50 RUB, pricePerMinute=8 RUB; снимок тарифа сохраняется на старте. minutes=max(1,ceil(durationSeconds/60)), amount=unlockFee+minutes*pricePerMinute, округление до 2 знаков HALF_UP. 0–60 секунд — 58 RUB, 61–120 — 66 RUB. Изменение rates не меняет уже записанный снимок старой поездки.
+
+Pay owner-only, FINISHED → PAID; paidAt фиксируется один раз, повтор PAID → 200 с прежней суммой/временем. ACTIVE pay → 409. PAYMENT_MODE=educational обязателен для успешной учебной оплаты; иначе 503, статус остаётся FINISHED. Поля amount/status клиента не назначают оплату. **Реального банковского провайдера/списания нет**, paymentMode=EDUCATIONAL честно сохраняется в API/PDF, даже если надпись убрана из формы UI. Произвольный бан не снимается автоматически после оплаты.
+
+История owner-only, новые поездки первыми. Direct Ride query userId можно опустить (текущий), чужой userId → 403. BFF игнорирует клиентский userId и сам получает текущий. ADMIN не обходит owner-only Ride. Полная поездка GET id доступна Documents напрямую через Ride, но не как GET одной поездки в BFF.
+
+### 7.4 Сохранение отзыва и публичная лента
+
+PUT review owner-only на FINISHED/PAID; ACTIVE/другие состояния → 409. Тело:
+
+```json
+{
+  "rideRating": 5,
+  "scooterRating": 4,
+  "rideComment": "Удобная поездка",
+  "scooterComment": "Хороший самокат"
+}
+```
+
+Обе оценки обязательны, строго целые 1–5; 1.5, строки, null/отсутствие — 400. Комментарии необязательны/null → пустая строка, trim, максимум 1000 UTF-16-символов каждый; ISO-control, кроме LF/CR/TAB, запрещён. Текст не определяет userId/rideId/время; reviewedAt ставит сервер.
+
+Ответ 200 — Ride с review (§4.3). Один изменяемый отзыв на поездку, повтор PUT заменяет его, не создаёт дубликат. Отзыв хранится в rides, переживает перезапуск. Доступ по чужому rideId — 403.
+
+Публичные GET reviews BFF/Ride: limit default20, 1–100; offset default0, 0..2147483647. Неверная пагинация — 400. Нет JWT, нет userId-фильтра, нет персональных полей; ответ PublicReview[] (§4.4). Главная показывает последние два, «Все отзывы» — страницы по20; сохранение/изменение обновляет ленту. Пустой список и ошибка имеют явные состояния, демонстрационных отзывов вместо них нет. Публичного POST reviews/delete review/отдельной модерации отзывов в этой версии нет.
+
+## 8. Moderation, User-прокси и панель ADMIN
+
+Источник blocked — Moderation. User хранит пользователей/роли, но не копирует бан в свою таблицу. User me/byId/blocked и login спрашивают status с исходным Bearer. При новом register новый UUID ещё не имеет банов, blocked=false без запроса status. User validate не вызывает Moderation.
+
+Status доступен self либо ADMIN, остальные Moderation API — ADMIN. Неизвестный userId без записи в прямом Moderation status даёт 200 blocked=false, не 404: сервис сам не проверяет наличие пользователя в User. User-прокси byId/ban/unban/blocked проверяет существующего активного пользователя и может дать 404.
+
+Ban reason — enum-имя из reasons. Неизвестное/пустое — 400. Срок задаётся причиной, blockedUntil=blockedAt+duration либо null навсегда. Повтор активного ban возвращает существующий объект, не меняет причину/срок. Unban удаляет текущую запись; повтор — 200 blocked=false. Истории прошлых банов в API нет.
+
+При истечении срока status снимает запись и отвечает false. Список читает записи отдельно, поэтому запись может кратковременно оставаться до проверки истечения её статуса; не следует обещать отдельный мгновенный scheduler. GET списка: limit default50, 1–500; offset default0 ≥0; blocked либо отсутствует, либо строго true. User-прокси /blocked имеет default limit100, тот же максимум500.
+
+Панель `/admin/users.html` получает `/admin/js/config.js` (USER_URL и LOGIN_URL без секретов), затем вызывает User GET users, blocked постранично, reasons, POST ban/unban. CORS origin8082 разрешён в User. Вход/выход и токен см. §5. Нет прямого BFF ADMIN-прокси. Служебный key Scooter не превращается в ADMIN JWT и не используется для User → Moderation.
+
+### Справочник причин исходной согласованной схемы
+
+GET reasons — источник актуальных имён для клиента. В текущем коде сроки ban заданы BlockReason; SQL-справочник должен оставаться согласован с ним. Публичного API редактирования причин нет.
+
+| reasonType | Описание | durationSeconds (null — навсегда) |
+| --- | --- | --- |
+| RIDE_DOUBLE_RIDING | Езда вдвоем или втроем | 259200 |
+| RIDE_UNDERAGE | Передача самоката несовершеннолетнему | NULL |
+| RIDE_INTOXICATED | Езда в состоянии опьянения | NULL |
+| RIDE_DANGEROUS | Агрессивное / опасное вождение | 604800 |
+| RIDE_ACCIDENT_WITH_PEDESTRIAN | Наезд на пешехода / ДТП | NULL |
+| VANDALISM_PHYSICAL | Умышленная порча техники | NULL |
+| STOLEN_OR_ABANDONED | Попытка кражи или удержания техники | NULL |
+| HEAVY_OVERLOAD | Превышение допустимой нагрузки | 259200 |
+| PARKING_BLOCKED_PEDESTRIAN | Парковка, создающая препятствия | 86400 |
+| PARKING_FORBIDDEN_ZONE | Оставление в запрещенной зоне | 172800 |
+| PARKING_FAKE_PHOTO | Фиктивное / некачественное фото парковки | 43200 |
+| PAYMENT_DEBT | Неоплаченная задолженность | NULL |
+| PAYMENT_CHARGEBACK_FRAUD | Оспаривание платежей через банк | NULL |
+| PAYMENT_INVALID_CARD | Использование подозрительных карт | NULL |
+| ACCOUNT_MULTI_ACCOUNTING | Мультиаккаунтинг | NULL |
+| ACCOUNT_FAKE_IDENTITY | Использование чужих документов | NULL |
+| ACCOUNT_TRANSFER | Передача аккаунта третьим лицам | 604800 |
+| SERVICE_ABUSE_SUPPORT | Оскорбление службы поддержки | 604800 |
+| SERVICE_API_ABUSE | Попытка взлома / использование ботов | NULL |
+
+User → Moderation сохраняет 400/401/403/409. Сеть/тайм-аут/429/5xx → 503; неверный успешный JSON/userId/blocked, неожиданный redirect/404 → 502. Недоступность не превращается в выдуманный бан. Moderation перед каждым защищённым запросом проверяет исходный JWT через User validate (ожидает204); плохой/отозванный →401, недоступная проверка →503.
+
+## 9. Три вида PDF, метаданные и данные БД
+
+### 9.1 Запрос BFF и прямой Documents
+
+**RIDE_PAYMENT** — чек только своей PAID-поездки:
+
+```json
+{
+  "docType": "RIDE_PAYMENT",
+  "sourceId": "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+}
+```
+
+**USER_HISTORY** — история по startedAt в выбранном периоде UTC:
+
+```json
+{
+  "docType": "USER_HISTORY",
+  "from": "2026-10-01",
+  "to": "2026-10-28"
+}
+```
+
+**USER_BLOCKED** — уведомление о текущей действующей блокировке:
+
+```json
+{
+  "docType": "USER_BLOCKED"
+}
+```
+
+На прямом Documents необходимо добавить собственный userId; BFF получает его из me:
 
 ```json
 {
@@ -638,249 +606,171 @@ UUID и даты — строки. Ответы PDF и ошибки не кеш�
 }
 ```
 
-**USER_BLOCKED:**
+RECEIPT — совместимый alias RIDE_PAYMENT. У чека sourceId обязателен; у остальных типов прямой Documents требует null/отсутствие sourceId. USER_HISTORY требует обе корректные даты и from≤to. Неверный docType/тип UUID/даты →400; чужой userId/чужая поездка →403. Без JWT →401. Пустая история допустима: возвращается PDF без выдуманных поездок.
 
-```json
-{
-  "userId": "550e8400-e29b-41d4-a716-446655440000",
-  "docType": "USER_BLOCKED"
-}
-```
+Чек: Documents получает User и Ride GET id, требует собственного владельца, PAID, id/userId/numberPlate/startedAt/finishedAt/amount/currency/paidAt; amount≥0, currency из3 заглавных латинских букв, startedAt≤finishedAt≤paidAt. Чужой →403, неоплаченный →409, неполный/несовместимый успешный ответ источника →502.
 
-Для генерации используется `GET /api/moderation/users/{userId}/status` с исходным
-JWT (проверено с настоящим исправленным Moderation). userId ответа должен
-совпадать, blocked — boolean. При true обязательны reasonType/reason/blockedAt,
-blockedUntil может быть null (бессрочно). При blocked=false — `409`.
+Уведомление: status через Moderation с JWT текущего пользователя, blocked=true обязателен. Без действующего бана →409. ID блокировки не нужен; причина/срок идут из status, blockedUntil=null корректен для бессрочного бана. История: User + Ride history текущего пользователя, фильтр по UTC-дате startedAt включительно; может содержать ACTIVE/FINISHED с ещё пустыми полями оплаты.
 
-**USER_HISTORY:**
+### 9.2 Успех и ошибки PDF
 
-```json
-{
-  "userId": "550e8400-e29b-41d4-a716-446655440000",
-  "docType": "USER_HISTORY",
-  "from": "2026-10-01",
-  "to": "2026-10-31"
-}
-```
+Успех — 200, Content-Type: application/pdf, Content-Disposition: attachment. BFF имя document.pdf; прямой Documents generate — ride_payment.pdf/user_history.pdf/user_blocked.pdf, повторный download — document.pdf. Тело начинается с `%PDF-`, это бинарный документ. BFF отклоняет не-PDF успешный ответ зависимости как502. Ошибка — JSON с error, не PDF-файл с HTML/JSON внутри.
 
-Все три варианта используют один POST endpoint. При успехе возвращаем `200`,
-`Content-Type: application/pdf` и PDF в теле ответа. Через BFF имя скачивания
-`document.pdf`; прямой Documents использует ride_payment.pdf, user_blocked.pdf
-или user_history.pdf. При ошибке — соответствующий HTTP-статус и `{"error":"..."}`.
+Thymeleaf + OpenHTMLtoPDF/PDFBox, встроенный в пакет DejaVuSans с кириллицей. PDF_FONT_PATH должен указывать на читаемый TTF, JWT_PUBLIC_KEY_PATH — на тот же public.pem User. У Documents только публичный ключ, не приватный. Ошибка ключа/шрифта/рендеринга — ошибка конфигурации/генерации, не успешный документ. Первый холодный рендер может строить кэш, BFF ждёт до60с; последующие используют local-run/stand/documents/cache.
 
-`userId` сверяем с JWT. Для `RIDE_PAYMENT` проверяем, что поездка принадлежит пользователю и имеет статус `PAID`. Для `USER_BLOCKED` проверяем принадлежность блокировки пользователю. Для `USER_HISTORY` проверяем корректность периода.
+### 9.3 История генераций
 
-BFF отправляет `docType = RIDE_PAYMENT`; RECEIPT принимает как совместимый alias и преобразует перед вызовом Documents.
+При generate создаётся PENDING; при успехе GENERATED и JSON-снимок исходных данных; при исключении — FAILED. PDF-байты и ссылка на выдуманный внешний файл не сохраняются. Генерация одного и того же типа/поездки повторным POST создаёт новую запись; это не idempotency key. Для повторного скачивания существующей записи использовать GET download.
 
-**Запросы к другим сервисам:**
+GET list default limit50 (1–100), offset0 ≥0, сортировка createdAt DESC,id DESC, только свои неудалённые записи. GET meta — DocumentMetadata. GET download требует GENERATED, иначе409, рендерит сохранённый снимок без создания новой записи. История/PENDING старше2мин при чтении переводится в FAILED. Старый чек/история/уведомление не должны меняться после новых поездок/снятия бана, если снимок есть; legacy без снимка пытается восстановить данные из доступных источников и может вернуть ошибку, не обещая неизменность.
 
-| Сервис | Метод | Endpoint | Назначение |
-|---|---|---|---|
-| Ride | GET | `/api/rides/{rideId}` | Исправленный Documents вызывает; реализовано в Ride и используется Documents |
-| Ride | GET | `/api/rides?userId={userId}` | История поездок |
-| Moderation | GET | `/api/moderation/users/{userId}/status` | Данные текущей блокировки |
-| User | GET | `/api/users/validate` | Проверка отзыва/актуальности JWT до создания метаданных |
-| User | GET | `/api/users/{userId}` | Данные пользователя; в User реализован для самого пользователя/ADMIN. Вызов исправленного Documents подтверждён с настоящим User |
+DELETE owner-only, мягкое удаление: 204; повтор того же DELETE —204. После него GET/meta/download —404, из списка запись исчезает. Чужой doc —403; корректный неизвестный UUID —404. ADMIN не обходит owner-only Documents.
 
-Для `USER_HISTORY` Documents получает список поездок и фильтрует его по `from` и `to`.
+### 9.4 Схема documents (внутренняя, не тело API)
 
-**Генерация PDF:** три захардкоженных HTML-шаблона (`ride-payment.html`, `user-blocked.html`, `user-history.html`). Данные подставляются в HTML, затем HTML преобразуется в PDF. Файл создаётся только по запросу и не сохраняется.
+| SQL-поле | Тип / смысл |
+| --- | --- |
+| id | UUID PK, default gen_random_uuid() |
+| user_id | UUID NOT NULL, владелец |
+| document_type | VARCHAR(50): RIDE_PAYMENT/USER_BLOCKED/USER_HISTORY |
+| source_id | UUID\|null, поездка чека |
+| period_from / period_to | DATE\|null, период истории |
+| status | VARCHAR(20): PENDING/GENERATED/FAILED |
+| created_at / updated_at | TIMESTAMPTZ NOT NULL |
+| generated_at | TIMESTAMPTZ\|null |
+| payload_json | JSONB\|null: снимок данных, не PDF |
+| is_deleted / deleted_at | boolean NOT NULL defaultfalse / TIMESTAMPTZ\|null |
 
-**БД:** PostgreSQL, одна таблица `documents`. Храним `id`, `user_id`, `document_type`, `source_id`, `period_from`, `period_to`, `status`, `created_at`, `updated_at`, `generated_at`, `is_deleted`, `deleted_at`, `payload_json` (JSONB-снимок исходных данных). Для `user_id` и `source_id` используем UUID. `source_id` заполняется только для `RIDE_PAYMENT`, для остальных типов документов — `NULL`. Поддерживаем статусы `PENDING`, `GENERATED`, `FAILED` и soft delete.
+Индексы: user_id по неудалённым, document_type, status, source_id; history (user_id,created_at DESC,id DESC) по неудалённым. JSON wire использует docType/sourceId/from/to/createdAt/generatedAt/snapshotAvailable, не SQL snake_case.
 
-**Фактическая генерация/запуск Documents:** Java 17+ / Servlet 6.0 / Tomcat
-10.1, PostgreSQL с отдельной БД и схемой `src/main/resources/schema.sql`.
-Обязательны DB_URL, **DB_USERNAME** (отличается от DB_USER в User/Moderation),
-DB_PASSWORD, JWT_PUBLIC_KEY_PATH (публичный PEM SubjectPublicKeyInfo User;
-альтернатива JWT_PUBLIC_KEY как PEM/base64 DER), PDF_FONT_PATH (локальный TTF
-с кириллицей). Приватный ключ сюда не копируется; ключ кешируется, при его
-замене перезапустить сервис. JWT_ISSUER default `scooter-user-service` должен
-совпадать с User. USER_SERVICE_URL default `http://localhost:8081`,
-MODERATION_SERVICE_URL `http://localhost:8082`, RIDE_SERVICE_URL
-`http://localhost:8084`. Сервис Documents: 8085, контекст `/` через ROOT.war;
-при контексте `/documents` его нужно добавить в document.service.url BFF.
-Шрифт не включён в архив: отсутствие/неподходящий шрифт не считается успешной
-генерацией. В PDF русский текст проверен извлечением из реального файла.
-История фильтруется по startedAt в UTC, обе границы периода включительны;
-неверная принадлежность поездки в списке → 502 вместо неполной успешной истории.
-Метаданные PENDING → GENERATED/FAILED сохраняются, PDF на диске/в БД не хранится.
-GET/DELETE опубликованы и проксируются BFF; история/скачивание/подтверждение удаления доступны
-в кабинете ScootX. При GENERATED атомарно сохраняется JSON-снимок данных, а не PDF.
-Download рендерит этот снимок: старое уведомление доступно после unban, история
-не меняется после новых поездок. Для записей прежней версии без снимка возможна
-однократная попытка восстановить данные из текущих источников; если они недоступны,
-возвращается ошибка вместо выдуманного документа. PENDING старше двух минут при
-чтении истории переводится в FAILED; повтор создаёт новую запись генерации.
+### 9.5 Остальные таблицы и миграции
 
-### Метаданные истории Documents (также через BFF)
+- User DB: users (UUID, нормализованный login UNIQUE, password_hash bcrypt, full_name, birth_date, avatar_url, role, created_at/updated_at, is_deleted/deleted_at), tokens (UUID jti, user_id FK, token_hash SHA-256 UNIQUE, created_at/expire_at/is_valid). Хэши/секреты не wire API. Обновление user timestamp триггером.
+- Moderation DB: reasons (UUID/type UNIQUE/description/default_duration_seconds); blocked_users (UUID, user_id UNIQUE, reason_id FK, blocked_at/blocked_until). Межбазового FK в User нет, существование перед административным изменением проверяет User-прокси.
+- Scooter DB: scooter (numeric_plate PK, charge0..100, status, position_x/y double, is_deleted, reservation_id, reserved_by); scooter_reservations (ride_id PK, number_plate, user_id, released), долговечные отмены/резервации.
+- Ride DB: rates (UUID, name, unlock_fee, price_per_minute, currency, is_default, active); rides (UUID, user_id, number_plate, rate_id FK, status, payment_mode, время/координаты/последняя позиция, duration_seconds, amount, currency, paid_at, снимок unlock_fee/price_per_minute). Отзывы: ride_rating/scooter_rating SMALLINT1..5, ride_comment/scooter_comment VARCHAR1000, reviewed_at TIMESTAMPTZ. Уникальные индексы активной операции на user_id/number_plate; корректность согласованных полей состояния проверяет SQL.
+- Пять отдельных PostgreSQL БД, BFF своей БД не имеет. Префикс зависит от prepare, например kicksharing_teacher_user и т.д.; он не часть HTTP-контракта.
+- schema_migrations: version/checksum/applied_at; SQL в транзакции с advisory lock, SHA-256, повтор применённого с тем же хэшем допустим. Изменённый старый файл отклоняется; нужна новая версия. Включены ride001 latest position, ride002 reviews, documents001 history index и documents002 snapshots. Для чистого запуска обязательна ride002, а не ручной ALTER без регистрации версии.
 
-Пример одного элемента массива GET /api/documents и ответа GET по ID:
+## 10. Все 21 тема исходного документа и актуальное решение
 
-```json
-{"id":"550e8400-e29b-41d4-a716-446655440001","userId":"550e8400-e29b-41d4-a716-446655440000","docType":"USER_HISTORY","sourceId":null,"from":"2026-10-01","to":"2026-10-27","status":"GENERATED","createdAt":"2026-10-27T10:00:00Z","generatedAt":"2026-10-27T10:00:01Z","snapshotAvailable":true}
-```
-
-Порядок — createdAt DESC, id DESC. limit/offset вне диапазона → 400. Поле
-snapshotAvailable=false возможно у старых записей; payload_json клиенту не выдаётся.
-Любой маршрут требует действующий JWT и владельца, включая download/delete.
-
-## 4. Сквозной сценарий аренды
-
-В исходном MD на месте диаграммы был только маркер встроенного содержимого
-«6 запросов клиента, 8 вызовов сервисов», самой диаграммы/её вложения в файле нет.
-Ниже восстановлено текстовое описание по контракту и коду; фиксированное число
-внутренних вызовов не указывается, поскольку защищённые запросы включают validate.
-
-1. При необходимости регистрация, затем отдельный login. User получает blocked
-   у Moderation и возвращает JWT/user; BFF создаёт HttpOnly-сессию.
-2. Просмотр каталога/nearest/карточки через BFF, данные приходят от Scooters.
-3. Старт POST rides: BFF проверяет validate, получает me и blocked у User.
-   При явном бане — 403 и Ride не вызывается; при ошибке проверки нет ложного
-   blocked=false/успешного старта. Ride определяет владельца по JWT, проверяет
-   готовность самоката/активную поездку. Состояние меняется через служебные reserve/release Scooter (п.3).
-4. Завершение PUT finish: Ride проверяет владельца, рассчитывает amount и
-   возвращает FINISHED. BFF не рассчитывает сумму самостоятельно.
-5. Оплата POST pay: Ride проверяет владельца/состояние, возвращает PAID при успехе;
-   повтор должен быть идемпотентным. При отказе UI не объявляет поездку оплаченной.
-6. Чек POST documents/generate: BFF добавляет userId из me; исправленный Documents
-   проверяет sourceId, владельца и PAID, получить данные Ride, вернуть PDF.
-   GET конкретной поездки реализован и проверен в Ride.
-7. Выход POST auth/logout: User отзывает JWT, BFF закрывает сессию. Исправленные
-   Moderation и Documents проверяют отзыв через User validate. Scooter и Ride также немедленно учитывают отзыв через User validate.
-
-Диаграмма успешного сценария USER (ошибки и ADMIN-переход описаны выше):
-
-```mermaid
-sequenceDiagram
-    actor Client as Браузер
-    participant BFF
-    participant User
-    participant Mod as Moderation
-    participant Scooters
-    participant Ride
-    participant Docs as Documents
-    Client->>BFF: POST /api/auth/login
-    BFF->>User: POST /api/users/login
-    User->>Mod: GET /api/moderation/users/{userId}/status (новый JWT)
-    Mod->>User: GET /api/users/validate (исходный JWT)
-    User-->>Mod: 204
-    Mod-->>User: Статус блокировки
-    User-->>BFF: accessToken, expiresInSeconds, user
-    BFF-->>Client: JSON + HttpOnly session cookie
-    Note over BFF,User: Перед каждым защищённым API BFF вызывает User validate
-    Client->>BFF: POST /api/scooters/nearest
-    BFF->>Scooters: POST nearest (исходный JWT)
-    Scooters-->>BFF: Список самокатов
-    BFF-->>Client: Список самокатов
-    Client->>BFF: POST /api/rides
-    BFF->>User: GET me, GET users/{id}/blocked
-    User->>Mod: Запросы status
-    Mod-->>User: Статусы блокировки
-    User-->>BFF: me и blocked
-    Note over BFF,Ride: Только если проверка успешна и blocked=false
-    BFF->>Ride: POST rides (JWT)
-    Ride-->>BFF: ACTIVE
-    BFF-->>Client: ACTIVE
-    Client->>BFF: PUT /api/rides/{id}/finish
-    BFF->>Ride: PUT finish (JWT, координаты)
-    Ride-->>BFF: FINISHED + amount
-    BFF-->>Client: FINISHED + amount
-    Client->>BFF: POST /api/rides/{id}/pay
-    BFF->>Ride: POST pay (JWT)
-    Ride-->>BFF: PAID
-    BFF-->>Client: PAID
-    Client->>BFF: POST /api/documents/generate
-    BFF->>User: GET me
-    User-->>BFF: me (текущий userId)
-    BFF->>Docs: POST generate (JWT, userId, sourceId)
-    Docs->>User: GET validate, GET users/{id} (исходный JWT)
-    User-->>Docs: 204, профиль
-    Docs->>Ride: GET rides/{id} (проверка владельца)
-    Ride-->>Docs: Настоящая поездка PAID, владелец, платёжные поля
-    Note over Docs,Ride: Documents проверяет владельца и оплату
-    Docs-->>BFF: PDF
-    BFF-->>Client: PDF
-    Client->>BFF: POST /api/auth/logout
-    BFF->>User: POST /api/users/logout
-    User-->>BFF: 204, токен отозван
-    BFF-->>Client: 204, сессия закрыта
-```
-
-## 5. Все 21 вопрос исходного документа: актуальные статусы
-
-Номера и исходные предложения сохранены. Все 21 тема имеют решение для сдаваемой
-версии; исходный вариант может быть заменён явно выбранной реализацией.
-Дополнительных обязательных требований преподавателя нет (подтверждено пользователем).
-
-| № | Тема и сохранённое предложение | Решение на 27 октября |
+| № | Тема / сохранённое исходное предложение | Решение финальной версии |
 | --- | --- | --- |
 | 1 | **Moderation через User или напрямую из BFF.** В исходнике предлагалось User → Moderation; альтернативой был прямой клиент BFF с moderation.service.url | Выбран и реализован User → Moderation; BFF не вызывает REST Moderation напрямую. Отдельный URL панели для ADMIN — не REST-клиент. Status API проверен с настоящим User и исправленным Moderation |
-| 2 | **Координаты.** В ТЗ posx/posy — int, геолокация — дробные градусы. Предложение: number (int/float); если команды требуют int, согласовать преобразование | Закрыто для сдачи: дробная евклидова учебная сетка, X/Y в диапазоне ±1000000, distance в единицах сетки. GPS-кнопка удалена; int-округления нет |
+| 2 | **Координаты.** В ТЗ posx/posy — int, геолокация — дробные градусы. Предложение: number (int/float); если команды требуют int, согласовать преобразование | Выбраны дробные географические градусы: X=долгота,Y=широта; nearest Haversine, distance в метрах. Ручного ввода нет; браузерная геолокация и описанный fallback без GPS. У общих валидаторов Ride/BFF остаётся исторический предел ±1000000, не единицы сетки. |
 | 3 | **Смена статуса самоката.** READY → IN_RIDE → READY. Предложено Ride → `PUT /api/scooters/{numberPlate}/status` с `{"status":"IN_RIDE"}` и атомарным отказом 409, если не READY | Реализована прямая связь Ride → Scooter через служебные reserve/release, уникальный rideId, транзакции, постоянные отмены и восстановление; предложенный PUT status не публикуется |
 | 4 | **Данные для чека.** Documents должен получить поездку. Предлагался `GET /api/rides/{id}` в Ride; альтернатива — сбор данных в BFF и расширение тела | Закрыто: BFF отправляет идентификаторы, Documents получает настоящую поездку через Ride GET и проверяет владельца/оплату |
 | 5 | **Тарифы.** Предложен `GET /api/rates` в Ride → `[{"id":"6ba7b810-9dad-11d1-80b4-00c04fd430c8","name":"Минутный","pricePerMinute":8.0,"unlockFee":50.0}]`, прокси BFF `GET /api/rates`; null rateId → тариф по умолчанию | Закрыто: rates реализованы в Ride и BFF, null rateId выбирает default. Пользователь подтвердил учебный тариф 50/8 и отсутствие настоящего списания |
 | 6 | **Статусы поездки.** Вместо старого угадывания ACTIVE/IN_PROGRESS/STARTED предложены ACTIVE, FINISHED, PAID; CANCELLED — только если понадобится | В BFF/UI используется ACTIVE → FINISHED → PAID. Ride выдаёт эти статусы; внутренние восстановительные состояния не объявлены пользовательским CANCELLED |
-| 7 | **Трекинг времени/координат.** Предложено `PUT /api/rides/{id}/position` с posX/posY → 204 и прокси BFF; альтернатива — исключить трекинг из задания | Реализовано в Ride и BFF: PUT position → 204, только владелец ACTIVE; последняя позиция/время сохраняются, Scooter обновляется служебным запросом. Сумму считает сервер, GPS не имитируется |
+| 7 | **Трекинг времени/координат.** Предложено `PUT /api/rides/{id}/position` с posX/posY → 204 и прокси BFF; альтернатива — исключить трекинг из задания | PUT position реализован в Ride/BFF: owner ACTIVE,204, последняя позиция/время и обновление Scooter. Непрерывного GPS-трека всех точек нет; без GPS старт/финиш по описанным сохранённым данным, без выдачи их за фактический GPS. |
 | 8 | **Finish и pay вместе или раздельно.** Предложено два шага: finish считает, pay проводит оплату | BFF/ScootX реализуют два отдельных шага и явное подтверждение оплаты. Ride соблюдает FINISHED → PAID и идемпотентный повтор учебного pay, что проверено конкурирующими запросами |
 | 9 | **Роль при регистрации.** Убрать доверие role клиента; назначать USER на сервере | Закрыто в BFF и готовом User: роль не пересылается BFF, User принудительно создаёт USER |
 | 10 | **Чужой userId/sourceId и поездки.** Предложено userId из me; проверять владельца в Documents/Ride | BFF подставляет userId из me. Закрыто: Documents и настоящий Ride проверяют владельца, оплату и платёжные поля; прямые попытки чужого доступа проверены |
 | 11 | **Ложный 403 при сбое blocked.** Предлагалось разделить ошибку проверки и явный бан | Закрыто в BFF: недоступность/5xx → 503; неверная успешная структура → 502; только true → запрет старта 403. User при сбое Moderation также возвращает ошибку, а не выдуманный blocked |
-| 12 | **Нагрузка validate и подпись JWT.** Предлагались RS256 с публичным ключом у сервисов и validate для отзыва | User выдаёт RS256; BFF, исправленные Moderation и Documents вызывают validate на защищённых API. Scooter и Ride также проверяют токены через User validate. Отзыв проверен во всех шести приложениях |
+| 12 | **Нагрузка validate и подпись JWT.** Предлагались RS256 с публичным ключом у сервисов и validate для отзыва | RS256 выдаёт User. Защищённые BFF/Moderation/Scooter/Ride вызывают validate, Documents проверяет подпись и validate. Публичная анонимная лента reviews не требует JWT. Локальный CLI/профильные изменения роли не заменяются клиентским role. |
 | 13 | **История генераций Documents, без хранения PDF.** Предложен GET `/api/documents`; повторную выдачу согласовать отдельно | Реализовано в Documents/BFF и кабинете: постраничный GET истории, метаданные, soft delete; PDF не сохраняются, исходные данные фиксируются JSON-снимком |
 | 14 | **User ↔ Moderation: JWT, источник blocked, ошибки.** Предлагались исходный JWT, blocked только в Moderation, 503 при сбое | На стороне User реализовано: исходный JWT; blocked запрашивается, не хранится в User; сбой → 503, неверный ответ → 502. Совместимость userId/boolean blocked, бан/разбан и отзыв JWT проверены с исправленным Moderation на PostgreSQL |
-| 15 | **Админские ban/unban/blocked и справочник причин.** Исходно предлагались User-прокси и аналогичные BFF-маршруты, reason — имя из справочника | Закрыто: User-прокси ban/unban/blocked/reasons, ADMIN; панель вызывает User с Bearer/CORS. Дублирующий BFF-прокси выбранной панели не требуется |
+| 15 | **Админские ban/unban/blocked и справочник причин.** Исходно предлагались User-прокси и аналогичные BFF-маршруты, reason — имя из справочника | Закрыто: User-прокси ban/unban/blocked/reasons, ADMIN; панель вызывает User с Bearer/CORS. Дублирующий BFF-прокси текущей панели не требуется |
 | 16 | **Роли USER/ADMIN и claim role** | В готовом User и BFF-входе используются USER/ADMIN, роль есть в JWT. Исправленный Moderation проверяет JWT через User и применяет ADMIN/self; Scooter/Ride/Documents также проверяют JWT и права; служебный ключ разрешён только для операций восстановления |
-| 17 | **Документ USER_BLOCKED без ID блокировки.** Предложено GET Moderation `/api/moderation/users/{userId}/status`; sourceId не нужен, reason/blockedUntil идут в документ; false → 409 | Сохранено как требование Documents/Moderation. BFF поддерживает docType и отправляет userId из me, sourceId=null. Исправленный Documents проверен с настоящим Moderation: PDF о текущем бане, 409 без бана, UUID/sourceId и русский текст |
+| 17 | **Документ USER_BLOCKED без ID блокировки.** Предложено GET Moderation `/api/moderation/users/{userId}/status`; sourceId не нужен, reason/blockedUntil идут в документ; false → 409 | Реализован USER_BLOCKED без ID блокировки/sourceId, status в Moderation с JWT пользователя; без бана409, бессрочный срокnull. Уже сформированный снимок доступен после снятия бана. |
 | 18 | **Бессрочные причины (например PAYMENT_DEBT) и снятие после оплаты.** По исходному правилу снимаются вручную unban; предложена автоматизация через Ride/User и сервисный токен | Закрыто по исходному правилу: бессрочный PAYMENT_DEBT снимает ADMIN вручную. Учебная оплата не отменяет произвольный бан; автоматизация не входит в выбранный контракт |
 | 19 | **Данные оплаты для чека.** Предложен `GET /api/rides/{rideId}` в Ride с status, amount, currency, paidAt | Закрыто в Ride/Documents: GET одной поездки и платёжные поля реализованы и проверены; BFF отдельный GET одной поездки не публикует |
-| 20 | **HTML → PDF.** Возможность OpenHTMLtoPDF вместо Apache POI | Присланный Documents использует Thymeleaf + OpenHTMLtoPDF; три настоящих PDF с кириллицей проверены. Используется реализация из присланного Documents; генерация и кириллица проверены в полном стенде |
+| 20 | **HTML → PDF.** Возможность OpenHTMLtoPDF вместо Apache POI | Реализовано Thymeleaf + OpenHTMLtoPDF/PDFBox, три настоящих PDF с кириллицей. Bundled DejaVu, writable-кэш и тайм-аут PDF60с; Apache POI не используется. |
 | 21 | **Повторное скачивание PDF по ID.** Исходно PDF не сохраняется; возможна повторная генерация | Реализовано: GET /api/documents/{id}/download в Documents и BFF рендерит сохранённый JSON-снимок без новой записи. PDF не хранится; владелец/JWT/soft delete проверяются |
 
-## 6. Что изменено относительно присланного файла
+Отзывы после завершения и их публичная лента, вход по действующей сессии и автоматический no-Docker запуск добавлены после исходных 21 вопросов; их текущие правила приведены выше. Отсутствующий встроенный виджет исходного MD не восстанавливался как выдуманное изображение: ниже самостоятельная схема реального потока.
 
-- Сохранены общие правила, BFF API, контракты всех пяти сервисов, поля JSON,
-  требования к PDF/таблице documents и все 21 тема обсуждения.
-- Устаревшее поведение заменено явно: общий публичный auth/*, role клиента,
-  числовые/непроверенные типы входных полей, чужой userId документа, ложный бан, угадывание
-  статусов/метры во фронте, локальный GET-logout больше не являются текущим API.
-- Добавлены реальные User endpoints/права, обязательная дата и лимиты,
-  RS256/отзыв, вход ADMIN, корневой BFF на 8080, ответы по ошибкам и UI-ограничения.
-- 23 октября добавлены результаты проверки Moderation: обязательная проверка
-  JWT/отзыва через User, выход панели с отзывом, работа панели через User API,
-  единый limit до 500 и настройки запуска отдельного сервиса.
-- Исходный alias RECEIPT сохранён как совместимость; старые status/userId из
-  клиентского PDF-запроса описаны как неиспользуемые, не как текущие фильтры.
-- Вместо недоступного встроенного виджета дан самостоятельный сценарий/диаграмма.
-  Старая нумерация «шаг 6/8/10/12» не используется, поскольку самого виджета в MD нет.
-- JSON-P вместо ручного парсинга, общий Tokens/BaseServlet — внутренние изменения
-  BFF; они не требуют изменений wire API остальных сервисов.
+## 11. Сквозные сценарии
 
-Это самостоятельный файл для рассылки. Для аудита исходник целиком и без
-изменений сохранён в репозитории в docs/archive/API_CONTRACTS_ORIGINAL_2026-10-16.md;
-исторические утверждения исходника не следует применять вместо текущих разделов.
-Готовность остальных микросервисов не выводится из документа: нужны их код/запуск
-и интеграционная проверка. Подтверждены BFF, User, исправленные Moderation и Documents, включая совместный
-запуск на пяти отдельных PostgreSQL БД, сценарий ADMIN и три скачивания PDF из ScootX.
-Для запуска использовать согласованные исходники services/ и compose.yaml; исходные архивы команд содержали несовместимости.
-Все пять сервисов получены, приведены к единому API и проверены вместе с BFF без HTTP-фикстур.
+### 11.1 USER → поездка → отзыв → три документа
 
+1. Register → login → User валидирует учётные данные, выдаёт JWT, получает status в Moderation; BFF создаёт сессию.
+2. При GPS nearest; без GPS общий каталог. Выбор READY, start; BFF/прямой Ride проверяют бан, Ride резервирует Scooter служебным key.
+3. Position в ACTIVE, затем finish с фиксированием времени/суммы и освобождением Scooter; повтор не увеличивает сумму.
+4. Review на FINISHED/PAID, owner-only; публичная лента отдаёт только оценки/комментарии/дату.
+5. Pay отдельным шагом, EDUCATIONAL/PAID, повтор без изменения paidAt/amount.
+6. Чек: Documents читает User/Ride, проверяет владельца/оплату, возвращает PDF и сохраняет снимок/метаданные. История — отдельный запрос с from/to. USER_BLOCKED — третий тип только при действующем бане.
+7. Метаданные/повторный download/soft delete owner-only. Logout отзывает текущий JWT через User, сессия BFF закрывается.
 
-## 7. Полный локальный запуск
+### 11.2 ADMIN
 
-`docker compose up --build -d` из корня запускает все шесть приложений. Compose
-создаёт пять БД одного PostgreSQL (user/moderation/scooter/ride/documents), ключи
-и данные примеров. Каждый сервис — отдельный контейнер и ROOT-приложение.
-Все настройки и публичные порты согласованы в compose.yaml. User хранит
-приватный ключ, Documents получает только public.pem; служебный ключ Ride/Scooter
-хранится отдельно. Ключи/БД не меняются при обычном down/up. Шрифт PDF уже есть
-в образе. Для ручного Tomcat и переменных окружения см. local-stack/README.md.
-Для проверки с намеренными сбоями используются scripts/check-full-stack.cjs и
-scripts/check-submission.cjs и scripts/check-stack-recovery.cjs только в отдельном проекте kicksharing-full-check.
+Локально создать ADMIN штатным stand.py demo/PromoteAdmin; затем новый login. Browser fragment → sessionStorage панели. Таблица получает User users/blocked/reasons, ban/unban через User → Moderation. USER те же административные API получает403. Бан во время активной поездки не препятствует finish/pay, новый start запрещён; unban разрешает следующие поездки. Выход панели отзывает токен.
 
-При каждом обновлении Compose запускает migrate: версии SQL в local-stack/migrations,
-транзакции, advisory lock и SHA-256 в schema_migrations. Миграции не удаляют данные.
-Изменять уже применённый файл нельзя: для следующего изменения добавляется новый.
-Проверки сдаваемой версии: [SUBMISSION_REPORT.md](SUBMISSION_REPORT.md),
-ручной прогон: [SUBMISSION_CHECKLIST.md](SUBMISSION_CHECKLIST.md).
+```mermaid
+sequenceDiagram
+    actor Browser
+    participant BFF
+    participant User
+    participant Mod as Moderation
+    participant Ride
+    participant Scooter
+    participant Docs as Documents
+    Browser->>BFF: POST login
+    BFF->>User: POST users/login
+    User->>Mod: GET self status (новый JWT)
+    Mod->>User: GET validate (без вызова Moderation)
+    User-->>BFF: JWT + user
+    BFF-->>Browser: JWT + HttpOnly session
+    Browser->>BFF: POST rides
+    BFF->>User: validate, me, blocked
+    BFF->>Ride: POST rides (JWT)
+    Ride->>Scooter: reserve (X-Service-Key)
+    Ride-->>Browser: ACTIVE через BFF
+    Browser->>BFF: PUT finish
+    BFF->>Ride: finish (JWT)
+    Ride->>Scooter: release
+    Ride-->>Browser: FINISHED + amount через BFF
+    Browser->>BFF: PUT review / POST pay
+    BFF->>Ride: owner review / educational pay
+    Ride-->>Browser: review / PAID через BFF
+    Browser->>BFF: POST documents/generate
+    BFF->>Docs: own userId + sourceId + JWT
+    Docs->>User: validate + profile
+    Docs->>Ride: GET own PAID ride
+    Docs-->>Browser: PDF через BFF
+    Browser->>BFF: GET reviews без JWT
+    BFF->>Ride: GET public reviews без JWT
+    Ride-->>Browser: пять публичных полей через BFF
+```
 
-Альтернативный запуск полностью без Docker на Windows: [WINDOWS_NO_DOCKER.md](WINDOWS_NO_DOCKER.md). REST-адреса 8080–8085 и контекст / сохраняются; БД, ключи и окружение готовит отдельный PowerShell-скрипт.
+### 11.3 Сбои
+
+При недоступном User нет ложной авторизации; при недоступном Moderation старт/полный профиль могут вернуть503, но прямой validate не рекурсивен. При сбое reserve Ride хранит отмену, при сбое release — FINISHING для recovery. Не переносить расчёт суммы/PAID в браузер. Ошибка Documents не откатывает уже оплаченную поездку и не превращает HTML в PDF. Отсутствующая геолокация не приводит к подставным координатам/расстоянию пользователя.
+
+## 12. Настройки и запуск без IDEA/Docker
+
+Первый запуск описан в README_RU.md/START_HERE.html финального пакета. Нужны JDK17, PostgreSQL16+ (Linux также13+), Python3.9+, Tomcat10.1. Готовые WAR в dist, Maven/Node не обязательны для запуска. Все порты слушают loopback, браузер на той же машине.
+
+Из корня пакета Linux:
+
+```bash
+python3 scripts/stand.py prepare --pg-port 5432 --database-prefix kicksharing_teacher_
+python3 scripts/stand.py start --tomcat-home "/путь/к/apache-tomcat-10.1.61"
+python3 scripts/stand.py demo
+```
+
+Windows — `py -3` вместо python3 и Windows-путь к Tomcat. prepare создаёт все5БД, миграции, RSA/service key и local-run; повтор с прежними параметрами сохраняет данные/ключи. demo спрашивает пароль и готовит demo.user/demo.other/demo.admin с этим паролем. Встроенного общего пароля ADMIN нет. start читает JSON окружения сам, создаёт6конфигураций и ROOT-приложений. status показывает готовность, stop завершает только свои процессы. build — повторная Maven-сборка при изменении исходников; несовпадающий со сборкой исходник не запускается незаметно.
+
+Ручные настройки (значения секретов не фиксируются в контракте):
+
+| Сервис | Настройки |
+| --- | --- |
+| User | DB_URL, DB_USER, DB_PASSWORD, JWT_PRIVATE_KEY_PATH, JWT_PUBLIC_KEY_PATH; MODERATION_BASE_URL=http://localhost:8082; CORS_ALLOWED_ORIGINS=http://localhost:8082; JWT_ISSUER=scooter-user-service, JWT_TTL_SECONDS=3600 |
+| Moderation | DB_URL, DB_USER, DB_PASSWORD; USER_BASE_URL и ADMIN_USER_BASE_URL=http://localhost:8081; BFF_LOGIN_URL=http://localhost:8080/login.jsp |
+| Scooter | DB_URL, DB_USER (либо DB_USERNAME), DB_PASSWORD; USER_SERVICE_URL=http://localhost:8081; SERVICE_API_KEY |
+| Ride | DB_URL, DB_USER (либо DB_USERNAME), DB_PASSWORD; USER_SERVICE_URL=http://localhost:8081; SCOOTER_SERVICE_URL=http://localhost:8083; SERVICE_API_KEY; PAYMENT_MODE=educational |
+| Documents | DB_URL, DB_USER (либо DB_USERNAME), DB_PASSWORD; USER_SERVICE_URL=http://localhost:8081; MODERATION_SERVICE_URL=http://localhost:8082; RIDE_SERVICE_URL=http://localhost:8084; JWT_PUBLIC_KEY_PATH, PDF_FONT_PATH; JWT_ISSUER=scooter-user-service |
+| BFF | -Duser.service.url=http://localhost:8081 -Dscooter.service.url=http://localhost:8083 -Dride.service.url=http://localhost:8084 -Ddocument.service.url=http://localhost:8085; MODERATION_PANEL_URL=http://localhost:8082/admin/users.html (либо -Dmoderation.panel.url=...) |
+
+DB_URL содержит **свою** БД каждого сервиса и настоящий JDBC-порт; BFF БД не имеет. По умолчанию Linux-prepare создаёт отдельную роль с правами владельца своих БД; pgAdmin-пользователь не равен аккаунту сайта. User private/public.pem — один комплект, Documents только тот же public.pem. Путь абсолютный, на Linux начинается с `/home/...`, не `home/...`. Ключи/пароли/local-run не входят в ZIP и Git. PDF_FONT_PATH автоматически указывает на bundled DejaVuSans.ttf. SERVICE_API_KEY одинаков только у Scooter и Ride. Остальные межсервисные вызовы передают пользовательский Bearer, не подменяют его этим ключом.
+
+При переносе остановить стенд, сохранить local-run, повторить prepare для обновления абсолютных путей. Не редактировать применённые миграции. Данные на другом компьютере не появляются из ZIP автоматически — нужен backup/restore PostgreSQL при переносе прежней БД.
+
+## 13. Что обновлено и как проверять полноту
+
+Относительно старого документа сохранены все пять сервисов/BFF, типы UUID, модели/поля JSON, три документа, SQL-схема Documents, сценарий и 21 исходная тема. Заменены устаревшие утверждения: сетка/Math.hypot → GPS/Haversine; дата рождения до today → возраст16+; произвольное ФИО → формат; ручной ввод координат → авто/fallback; демонстрационные отзывы → сохранённая публичная лента; принудительная форма login.jsp → восстановление сессии; локальный logout → отзыв текущего JWT; прежний первый PDF10с →60с с persistent-кэшем. Полный реестр содержит60операций, не смешивает предложения/страницы с текущим API.
+
+В финальной проверке: 346 Java-тестов (включая задержанный на11сек PDF), 8 JS-тестов,31Chromium-сценарий; настоящие шесть приложений/пять новых PostgreSQL БД, USER/ADMIN, бан/поездка/отзыв/оплата/все3PDF с извлечением кириллицы, остановка/перезапуск и Unicode/space-пути. Браузерные автоматические сценарии используют настоящий BFF с HTTP-фикстурами зависимостей; реальный полный стенд проверен отдельными API-сценариями. Это не заявление о выполнении всех331ручных пунктов. Полный Windows-прогон в Linux-среде не выполнялся; это отражено в FINAL_VERIFICATION.md.
+
+Для рассылки достаточно этого самостоятельного MD; для работы проверяющего дополнительно включены FULL_API_URL_CHECKLIST.md/CSV (331 пункт), ALL_API.postman_collection.json, API_URL_INVENTORY.json (60метод+URL) и оригинал для аудита. При расхождении исходный старый MD не переопределяет эту актуальную редакцию. Новые требования, например банковский эквайринг, полное GPS-геозонирование, произвольный CRUD или история всех банов, требуют отдельного согласования, а не угадывания по имени endpoint.
+

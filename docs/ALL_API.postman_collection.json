@@ -2,7 +2,7 @@
   "info": {
     "name": "Kicksharing — все 60 API (ручной справочник)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "По коду a460d8a. Используйте docs/FULL_API_URL_CHECKLIST.md. Ручной запуск отдельных запросов по предусловиям, не автоматический сквозной Runner. Заполните коллекционные переменные. Публичные отзывы не требуют токена. USER_BLOCKED/USER_HISTORY — варианты тела generate из инструкции. Logout в конце. Реальные ключи/токены в репозиторий не сохраняйте."
+    "description": "По финальной сборке для преподавателя от 28.10.2026. Используйте docs/FULL_API_URL_CHECKLIST.md. Ручной запуск отдельных запросов по предусловиям, не автоматический сквозной Runner. Заполните коллекционные переменные. Публичные отзывы не требуют токена. USER_BLOCKED/USER_HISTORY — варианты тела generate из инструкции. Logout в конце. Реальные ключи/токены в репозиторий не сохраняйте. Для готового стенда: loginA=demo.user, loginB=demo.other, loginAdmin=demo.admin; password — введённый при stand.py demo. Токены/UUID получите из login; переменные не сохранять с секретами при передаче."
   },
   "variable": [
     {
@@ -124,6 +124,11 @@
       "key": "to",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -148,7 +153,7 @@
             "description": "Свободный loginA\nСоздан USER, пароль/hash не возвращаются; не автоматический вход\nИсточник: src/main/java/bff/servlet/AuthServlet.java",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"login\": \"{{loginA}}\",\n  \"password\": \"Check-password-2026!\",\n  \"fullName\": \"Иван Петров Иванович\",\n  \"birthDate\": \"2000-05-17\"\n}",
+              "raw": "{\n  \"login\": \"{{loginA}}\",\n  \"password\": \"{{password}}\",\n  \"fullName\": \"Иван Петров Иванович\",\n  \"birthDate\": \"2000-05-17\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -186,7 +191,7 @@
             "description": "Уже зарегистрирован loginA\naccessToken, expiresInSeconds, user; сохранить tokenA и userA; BFF также создаёт HttpOnly JSESSIONID\nИсточник: src/main/java/bff/servlet/AuthServlet.java",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"login\": \"{{loginA}}\",\n  \"password\": \"Check-password-2026!\"\n}",
+              "raw": "{\n  \"login\": \"{{loginA}}\",\n  \"password\": \"{{password}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -892,7 +897,7 @@
             "description": "Свободный loginA\nСоздан USER, пароль/hash не возвращаются; не автоматический вход\nИсточник: services/user/src/main/java/ru/scooter/user/servlet/RegisterServlet.java",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"login\": \"{{loginA}}\",\n  \"password\": \"Check-password-2026!\",\n  \"fullName\": \"Иван Петров Иванович\",\n  \"birthDate\": \"2000-05-17\"\n}",
+              "raw": "{\n  \"login\": \"{{loginA}}\",\n  \"password\": \"{{password}}\",\n  \"fullName\": \"Иван Петров Иванович\",\n  \"birthDate\": \"2000-05-17\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -930,7 +935,7 @@
             "description": "Уже зарегистрирован loginA\naccessToken, expiresInSeconds, user; сохранить tokenA и userA; BFF также создаёт HttpOnly JSESSIONID\nИсточник: services/user/src/main/java/ru/scooter/user/servlet/LoginServlet.java",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"login\": \"{{loginA}}\",\n  \"password\": \"Check-password-2026!\"\n}",
+              "raw": "{\n  \"login\": \"{{loginA}}\",\n  \"password\": \"{{password}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

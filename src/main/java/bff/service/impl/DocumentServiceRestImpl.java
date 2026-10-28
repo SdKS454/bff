@@ -23,7 +23,7 @@ public class DocumentServiceRestImpl implements DocumentService {
         HttpRequest.Builder builder = HttpRequest.newBuilder(
                         URI.create(BASE + "/api/documents/generate"))
                 .header("Accept", "*/*")
-                .timeout(Duration.ofSeconds(10))
+                .timeout(Duration.ofSeconds(60))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(toJson(request)));
         if (jwt != null && !jwt.isBlank()) {
@@ -34,7 +34,7 @@ public class DocumentServiceRestImpl implements DocumentService {
     @Override public byte[] download(String jwt,java.util.UUID id) {
         return pdf(HttpRequest.newBuilder(URI.create(BASE+"/api/documents/"+id+"/download"))
                 .header("Authorization","Bearer "+jwt).header("Accept","application/pdf")
-                .timeout(Duration.ofSeconds(10)).GET().build());
+                .timeout(Duration.ofSeconds(60)).GET().build());
     }
     @Override public bff.dto.JsonResponse metadata(String jwt,String method,String path) {
         try {

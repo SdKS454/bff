@@ -1,5 +1,5 @@
 {
-  "revision": "a460d8a",
+  "revision": "teacher-final-2026-10-28",
   "ports": {
     "BFF": 8080,
     "User": 8081,
