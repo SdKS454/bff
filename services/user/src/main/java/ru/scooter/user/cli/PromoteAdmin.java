@@ -3,11 +3,14 @@ package ru.scooter.user.cli;
 import ru.scooter.user.repository.jdbc.DriverManagerConnectionProvider;
 import ru.scooter.user.util.Validation;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.util.UUID;
 
 public final class PromoteAdmin {
-    private PromoteAdmin() {}
+    private PromoteAdmin() {
+    }
 
     public static void main(String[] args) throws Exception {
         if (args.length != 1)
@@ -21,9 +24,9 @@ public final class PromoteAdmin {
             try {
                 UUID id;
                 try (PreparedStatement select =
-                        c.prepareStatement(
-                                "SELECT id FROM users WHERE login=? AND NOT is_deleted FOR"
-                                        + " UPDATE")) {
+                             c.prepareStatement(
+                                     "SELECT id FROM users WHERE login=? AND NOT is_deleted FOR"
+                                             + " UPDATE")) {
                     select.setString(1, login);
                     try (ResultSet rs = select.executeQuery()) {
                         if (!rs.next())
@@ -32,12 +35,12 @@ public final class PromoteAdmin {
                     }
                 }
                 try (PreparedStatement update =
-                        c.prepareStatement("UPDATE users SET role='ADMIN' WHERE id=?")) {
+                             c.prepareStatement("UPDATE users SET role='ADMIN' WHERE id=?")) {
                     update.setObject(1, id);
                     update.executeUpdate();
                 }
                 try (PreparedStatement revoke =
-                        c.prepareStatement("UPDATE tokens SET is_valid=FALSE WHERE user_id=?")) {
+                             c.prepareStatement("UPDATE tokens SET is_valid=FALSE WHERE user_id=?")) {
                     revoke.setObject(1, id);
                     revoke.executeUpdate();
                 }

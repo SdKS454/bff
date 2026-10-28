@@ -44,49 +44,68 @@ public class RideServiceImpl implements RideService {
         rideRepository.save(ride);
         try {
             integrationService.reserve(ride);
-            Instant started=now();
-            if(!rideRepository.activate(ride.getId(),started))throw new ApiException(503,"Начало поездки отменено, повторите запрос");
-            ride.setStartedAt(started);ride.setStatus("ACTIVE");return ride;
-        } catch(RuntimeException failure) {
-            try { rideRepository.cancel(ride.getId()); recover(); }
-            catch(RuntimeException cleanup) { failure.addSuppressed(cleanup); }
+            Instant started = now();
+            if (!rideRepository.activate(ride.getId(), started))
+                throw new ApiException(503, "Начало поездки отменено, повторите запрос");
+            ride.setStartedAt(started);
+            ride.setStatus("ACTIVE");
+            return ride;
+        } catch (RuntimeException failure) {
+            try {
+                rideRepository.cancel(ride.getId());
+                recover();
+            } catch (RuntimeException cleanup) {
+                failure.addSuppressed(cleanup);
+            }
             throw failure;
         }
     }
 
-    @Override public void position(UUID userId,UUID id,double x,double y) {
-        checkCoordinates(x,y);RideEntity ride=getOwnedRide(userId,id);
-        if(!ride.getStatus().equals("ACTIVE"))throw new ApiException(409,"Позицию можно обновить только в активной поездке");
-        integrationService.position(ride,x,y);
-        if(!rideRepository.position(id,x,y,now()))throw new ApiException(409,"Поездка уже завершается");
+    @Override
+    public void position(UUID userId, UUID id, double x, double y) {
+        checkCoordinates(x, y);
+        RideEntity ride = getOwnedRide(userId, id);
+        if (!ride.getStatus().equals("ACTIVE"))
+            throw new ApiException(409, "Позицию можно обновить только в активной поездке");
+        integrationService.position(ride, x, y);
+        if (!rideRepository.position(id, x, y, now())) throw new ApiException(409, "Поездка уже завершается");
     }
+
     @Override
     public RideEntity finish(UUID userId, UUID id, double posX, double posY) {
         checkCoordinates(posX, posY);
         RideEntity ride = getOwnedRide(userId, id);
         if (ride.getStatus().equals("FINISHED") || ride.getStatus().equals("PAID")) {
-            if(Double.valueOf(posX).equals(ride.getEndPosX()) && Double.valueOf(posY).equals(ride.getEndPosY()))return ride;
-            throw new ApiException(409,"Поездка уже завершена с другими координатами");
+            if (Double.valueOf(posX).equals(ride.getEndPosX()) && Double.valueOf(posY).equals(ride.getEndPosY()))
+                return ride;
+            throw new ApiException(409, "Поездка уже завершена с другими координатами");
         }
         if (ride.getStatus().equals("ACTIVE")) {
-            Instant finishedAt=now();if(finishedAt.isBefore(ride.getStartedAt()))finishedAt=ride.getStartedAt();
-            Duration elapsed=Duration.between(ride.getStartedAt(),finishedAt);
-            long seconds=elapsed.getSeconds()+(elapsed.getNano()>0?1:0);
-            ride.setAmount(integrationService.calculatePrice(ride,seconds));
-            ride.setFinishedAt(finishedAt);ride.setDurationSeconds(seconds);
-            ride.setEndPosX(posX);ride.setEndPosY(posY);ride.setStatus("FINISHING");
-            if(!rideRepository.finish(ride)) {
-                ride=getOwnedRide(userId,id);
-                if(ride.getStatus().equals("FINISHED")||ride.getStatus().equals("PAID")) {
-                    if(Double.valueOf(posX).equals(ride.getEndPosX())&&Double.valueOf(posY).equals(ride.getEndPosY()))return ride;
-                    throw new ApiException(409,"Поездка завершена с другими координатами");
+            Instant finishedAt = now();
+            if (finishedAt.isBefore(ride.getStartedAt())) finishedAt = ride.getStartedAt();
+            Duration elapsed = Duration.between(ride.getStartedAt(), finishedAt);
+            long seconds = elapsed.getSeconds() + (elapsed.getNano() > 0 ? 1 : 0);
+            ride.setAmount(integrationService.calculatePrice(ride, seconds));
+            ride.setFinishedAt(finishedAt);
+            ride.setDurationSeconds(seconds);
+            ride.setEndPosX(posX);
+            ride.setEndPosY(posY);
+            ride.setStatus("FINISHING");
+            if (!rideRepository.finish(ride)) {
+                ride = getOwnedRide(userId, id);
+                if (ride.getStatus().equals("FINISHED") || ride.getStatus().equals("PAID")) {
+                    if (Double.valueOf(posX).equals(ride.getEndPosX()) && Double.valueOf(posY).equals(ride.getEndPosY()))
+                        return ride;
+                    throw new ApiException(409, "Поездка завершена с другими координатами");
                 }
-                if(!ride.getStatus().equals("FINISHING"))throw new ApiException(409,"Состояние поездки изменилось");
+                if (!ride.getStatus().equals("FINISHING")) throw new ApiException(409, "Состояние поездки изменилось");
             }
-        }else if(!ride.getStatus().equals("FINISHING"))throw new ApiException(409,"Поездка не начата");
-        if(!Double.valueOf(posX).equals(ride.getEndPosX())||!Double.valueOf(posY).equals(ride.getEndPosY()))throw new ApiException(409,"Завершение уже запрошено с другими координатами");
-        integrationService.release(ride,true);
-        rideRepository.completeFinish(ride.getId());ride.setStatus("FINISHED");
+        } else if (!ride.getStatus().equals("FINISHING")) throw new ApiException(409, "Поездка не начата");
+        if (!Double.valueOf(posX).equals(ride.getEndPosX()) || !Double.valueOf(posY).equals(ride.getEndPosY()))
+            throw new ApiException(409, "Завершение уже запрошено с другими координатами");
+        integrationService.release(ride, true);
+        rideRepository.completeFinish(ride.getId());
+        ride.setStatus("FINISHED");
         return ride;
     }
 
@@ -113,7 +132,8 @@ public class RideServiceImpl implements RideService {
         throw new ApiException(409, "Состояние поездки изменилось");
     }
 
-    @Override public RideEntity review(UUID userId, UUID id, ru.itis.dto.ReviewRequest request) {
+    @Override
+    public RideEntity review(UUID userId, UUID id, ru.itis.dto.ReviewRequest request) {
         RideEntity ride = getOwnedRide(userId, id);
         if (!ride.getStatus().equals("FINISHED") && !ride.getStatus().equals("PAID"))
             throw new ApiException(409, "Отзыв доступен только после завершения поездки");
@@ -131,23 +151,30 @@ public class RideServiceImpl implements RideService {
         return rideRepository.findByUserId(userId);
     }
 
-    @Override public RideEntity get(UUID userId,UUID id) {
-        RideEntity ride=getOwnedRide(userId,id);
-        if(ride.getStatus().equals("STARTING")||ride.getStatus().equals("CANCELLING"))throw new ApiException(409,"Запрос поездки обрабатывается");
+    @Override
+    public RideEntity get(UUID userId, UUID id) {
+        RideEntity ride = getOwnedRide(userId, id);
+        if (ride.getStatus().equals("STARTING") || ride.getStatus().equals("CANCELLING"))
+            throw new ApiException(409, "Запрос поездки обрабатывается");
         return ride;
     }
+
     public void recover() {
-        for(RideEntity ride:rideRepository.pending()) {
-            if(Thread.currentThread().isInterrupted())return;
+        for (RideEntity ride : rideRepository.pending()) {
+            if (Thread.currentThread().isInterrupted()) return;
             try {
-                if(ride.getStatus().equals("CANCELLING")) {
-                    try { integrationService.release(ride,false); }
-                    catch(ApiException e) { if(e.getStatus()!=404 && e.getStatus()!=409)throw e; }
+                if (ride.getStatus().equals("CANCELLING")) {
+                    try {
+                        integrationService.release(ride, false);
+                    } catch (ApiException e) {
+                        if (e.getStatus() != 404 && e.getStatus() != 409) throw e;
+                    }
                     rideRepository.removeCancelled(ride.getId());
                 } else {
-                    integrationService.release(ride,true);rideRepository.completeFinish(ride.getId());
+                    integrationService.release(ride, true);
+                    rideRepository.completeFinish(ride.getId());
                 }
-            }catch(ApiException unavailable) { /* Durable state is retried on the next tick/restart. */ }
+            } catch (ApiException unavailable) {                                                          }
         }
     }
 
@@ -161,7 +188,7 @@ public class RideServiceImpl implements RideService {
     }
 
     private void checkCoordinates(Double posX, Double posY) {
-        if ((posX != null && (!Double.isFinite(posX)||Math.abs(posX)>1_000_000)) || (posY != null && (!Double.isFinite(posY)||Math.abs(posY)>1_000_000))) {
+        if ((posX != null && (!Double.isFinite(posX) || Math.abs(posX) > 1_000_000)) || (posY != null && (!Double.isFinite(posY) || Math.abs(posY) > 1_000_000))) {
             throw new ApiException(400, "Координаты должны быть числами от -1000000 до 1000000");
         }
     }

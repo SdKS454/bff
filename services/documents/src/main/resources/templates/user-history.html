@@ -11,7 +11,13 @@
 <p><b>Период:</b> <span th:text="${doc.from}"></span> — <span th:text="${doc.to}"></span></p>
 <table>
     <thead>
-    <tr><th>Поездка</th><th>Самокат</th><th>Начало</th><th>Окончание</th><th>Сумма</th></tr>
+    <tr>
+        <th>Поездка</th>
+        <th>Самокат</th>
+        <th>Начало</th>
+        <th>Окончание</th>
+        <th>Сумма</th>
+    </tr>
     </thead>
     <tbody>
     <tr th:each="r : ${doc.rides}">

@@ -7,12 +7,12 @@ import bff.service.RideService;
 import bff.service.ServiceException;
 
 import java.io.IOException;
-import java.util.UUID;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.UUID;
 
 public class RideServiceRestImpl implements RideService {
 
@@ -25,9 +25,11 @@ public class RideServiceRestImpl implements RideService {
         return send("POST", URI.create(BASE + "/api/rides"), jwt, toJson(request));
     }
 
-    @Override public JsonResponse position(String jwt,UUID id,EndRideRequest request) {
-        return send("PUT",URI.create(BASE+"/api/rides/"+id+"/position"),jwt,"{\"posX\":"+request.posX()+",\"posY\":"+request.posY()+"}");
+    @Override
+    public JsonResponse position(String jwt, UUID id, EndRideRequest request) {
+        return send("PUT", URI.create(BASE + "/api/rides/" + id + "/position"), jwt, "{\"posX\":" + request.posX() + ",\"posY\":" + request.posY() + "}");
     }
+
     @Override
     public JsonResponse finish(String jwt, UUID rideId, EndRideRequest request) {
         String json = "{\"posX\":" + request.posX() + ",\"posY\":" + request.posY() + "}";
@@ -39,7 +41,8 @@ public class RideServiceRestImpl implements RideService {
         return send("POST", URI.create(BASE + "/api/rides/" + rideId + "/pay"), jwt, "{}");
     }
 
-    @Override public JsonResponse review(String jwt, UUID rideId, String json) {
+    @Override
+    public JsonResponse review(String jwt, UUID rideId, String json) {
         return send("PUT", URI.create(BASE + "/api/rides/" + rideId + "/review"), jwt, json);
     }
 
@@ -52,7 +55,9 @@ public class RideServiceRestImpl implements RideService {
         return send("GET", URI.create(BASE + "/api/reviews?limit=" + limit + "&offset=" + offset), null, null);
     }
 
-    public JsonResponse rates(String jwt) { return send("GET",URI.create(BASE+"/api/rates"),jwt,null); }
+    public JsonResponse rates(String jwt) {
+        return send("GET", URI.create(BASE + "/api/rates"), jwt, null);
+    }
 
     private String toJson(StartRideRequest request) {
         return "{\"numberPlate\":" + JsonText.quote(request.numberPlate())

@@ -1,14 +1,19 @@
 package ru.scooter.user.repository.jdbc;
 
 import ru.scooter.user.dto.UserSummary;
-import ru.scooter.user.entity.*;
+import ru.scooter.user.entity.Role;
+import ru.scooter.user.entity.User;
 import ru.scooter.user.exception.DataAccessException;
 import ru.scooter.user.exception.DuplicateLoginException;
-import ru.scooter.user.repository.*;
+import ru.scooter.user.repository.ConnectionProvider;
+import ru.scooter.user.repository.UserRepository;
 
 import java.sql.*;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 public final class JdbcUserRepository implements UserRepository {
     private final ConnectionProvider connections;
@@ -23,7 +28,7 @@ public final class JdbcUserRepository implements UserRepository {
                 "INSERT INTO users(id,login,password_hash,full_name,birth_date,avatar_url,role)"
                         + " VALUES (?,?,?,?,?,?,?)";
         try (Connection c = connections.getConnection();
-                PreparedStatement s = c.prepareStatement(sql)) {
+             PreparedStatement s = c.prepareStatement(sql)) {
             s.setObject(1, user.id());
             s.setString(2, user.login());
             s.setString(3, user.passwordHash());
@@ -49,10 +54,9 @@ public final class JdbcUserRepository implements UserRepository {
     }
 
     private Optional<User> find(String column, Object value) {
-        // column is selected exclusively by the two repository methods above, never by HTTP input.
         try (Connection c = connections.getConnection();
-                PreparedStatement s =
-                        c.prepareStatement("SELECT * FROM users WHERE " + column + "=?")) {
+             PreparedStatement s =
+                     c.prepareStatement("SELECT * FROM users WHERE " + column + "=?")) {
             s.setObject(1, value);
             try (ResultSet rs = s.executeQuery()) {
                 return rs.next() ? Optional.of(map(rs)) : Optional.empty();
@@ -65,7 +69,7 @@ public final class JdbcUserRepository implements UserRepository {
     @Override
     public boolean existsByLogin(String login) {
         try (Connection c = connections.getConnection();
-                PreparedStatement s = c.prepareStatement("SELECT 1 FROM users WHERE login=?")) {
+             PreparedStatement s = c.prepareStatement("SELECT 1 FROM users WHERE login=?")) {
             s.setString(1, login);
             try (ResultSet rs = s.executeQuery()) {
                 return rs.next();
@@ -78,11 +82,11 @@ public final class JdbcUserRepository implements UserRepository {
     @Override
     public List<UserSummary> findActiveUsers() {
         try (Connection c = connections.getConnection();
-                PreparedStatement s =
-                        c.prepareStatement(
-                                "SELECT id,login,full_name FROM users WHERE NOT is_deleted ORDER BY"
-                                        + " login");
-                ResultSet rs = s.executeQuery()) {
+             PreparedStatement s =
+                     c.prepareStatement(
+                             "SELECT id,login,full_name FROM users WHERE NOT is_deleted ORDER BY"
+                                     + " login");
+             ResultSet rs = s.executeQuery()) {
             List<UserSummary> users = new ArrayList<>();
             while (rs.next())
                 users.add(

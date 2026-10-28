@@ -6,11 +6,7 @@ import ru.itis.exception.ApiException;
 import ru.itis.model.RideEntity;
 import ru.itis.repository.RideRepository;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Timestamp;
+import java.sql.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,7 +42,7 @@ public class RideRepositoryJdbcImpl implements RideRepository {
             statement.setBigDecimal(9, ride.getUnlockFee());
             statement.setBigDecimal(10, ride.getPricePerMinute());
             statement.setString(11, ride.getCurrency());
-            statement.setString(12,ride.getPaymentMode());
+            statement.setString(12, ride.getPaymentMode());
             statement.executeUpdate();
         } catch (SQLException e) {
             if ("23505".equals(e.getSQLState())) {
@@ -117,31 +113,56 @@ public class RideRepositoryJdbcImpl implements RideRepository {
         }
     }
 
-    @Override public boolean position(UUID id,double x,double y,Instant at) {
-        return update("UPDATE rides SET last_pos_x=?,last_pos_y=?,last_position_at=? WHERE id=? AND status='ACTIVE'",x,y,Timestamp.from(at),id)==1;
-    }
-    @Override public boolean activate(UUID id, Instant startedAt) {
-        return update("UPDATE rides SET status='ACTIVE', started_at=? WHERE id=? AND status='STARTING'", Timestamp.from(startedAt),id)==1;
-    }
-    @Override public void cancel(UUID id) { update("UPDATE rides SET status='CANCELLING' WHERE id=? AND status='STARTING'",id); }
-    @Override public void removeCancelled(UUID id) { update("DELETE FROM rides WHERE id=? AND status='CANCELLING'",id); }
-    @Override public boolean completeFinish(UUID id) { return update("UPDATE rides SET status='FINISHED' WHERE id=? AND status='FINISHING'",id)==1; }
-    private int update(String sql,Object... args) {
-        try(var c=database.getConnection();var q=c.prepareStatement(sql)) {
-            for(int i=0;i<args.length;i++)q.setObject(i+1,args[i]); return q.executeUpdate();
-        }catch(SQLException e){throw new ApiException(503,"Хранилище поездок недоступно");}
-    }
-    @Override public List<RideEntity> pending() {
-        update("UPDATE rides SET status='CANCELLING' WHERE status='STARTING' AND started_at < NOW()-INTERVAL '30 seconds'");
-        try(var c=database.getConnection();var q=c.prepareStatement("SELECT * FROM rides WHERE status IN ('CANCELLING','FINISHING') ORDER BY started_at LIMIT 50");var r=q.executeQuery()) {
-            var result=new ArrayList<RideEntity>();while(r.next())result.add(map(r));return result;
-        }catch(SQLException e){throw new ApiException(503,"Хранилище поездок недоступно");}
+    @Override
+    public boolean position(UUID id, double x, double y, Instant at) {
+        return update("UPDATE rides SET last_pos_x=?,last_pos_y=?,last_position_at=? WHERE id=? AND status='ACTIVE'", x, y, Timestamp.from(at), id) == 1;
     }
 
     @Override
-   public boolean review(UUID id, ru.itis.model.RideReview review) {
+    public boolean activate(UUID id, Instant startedAt) {
+        return update("UPDATE rides SET status='ACTIVE', started_at=? WHERE id=? AND status='STARTING'", Timestamp.from(startedAt), id) == 1;
+    }
+
+    @Override
+    public void cancel(UUID id) {
+        update("UPDATE rides SET status='CANCELLING' WHERE id=? AND status='STARTING'", id);
+    }
+
+    @Override
+    public void removeCancelled(UUID id) {
+        update("DELETE FROM rides WHERE id=? AND status='CANCELLING'", id);
+    }
+
+    @Override
+    public boolean completeFinish(UUID id) {
+        return update("UPDATE rides SET status='FINISHED' WHERE id=? AND status='FINISHING'", id) == 1;
+    }
+
+    private int update(String sql, Object... args) {
+        try (var c = database.getConnection(); var q = c.prepareStatement(sql)) {
+            for (int i = 0; i < args.length; i++) q.setObject(i + 1, args[i]);
+            return q.executeUpdate();
+        } catch (SQLException e) {
+            throw new ApiException(503, "Хранилище поездок недоступно");
+        }
+    }
+
+    @Override
+    public List<RideEntity> pending() {
+        update("UPDATE rides SET status='CANCELLING' WHERE status='STARTING' AND started_at < NOW()-INTERVAL '30 seconds'");
+        try (var c = database.getConnection(); var q = c.prepareStatement("SELECT * FROM rides WHERE status IN ('CANCELLING','FINISHING') ORDER BY started_at LIMIT 50"); var r = q.executeQuery()) {
+            var result = new ArrayList<RideEntity>();
+            while (r.next()) result.add(map(r));
+            return result;
+        } catch (SQLException e) {
+            throw new ApiException(503, "Хранилище поездок недоступно");
+        }
+    }
+
+    @Override
+    public boolean review(UUID id, ru.itis.model.RideReview review) {
         return update("UPDATE rides SET ride_rating=?, scooter_rating=?, ride_comment=?, scooter_comment=?, reviewed_at=? "
-                + "WHERE id=? AND status IN ('FINISHED','PAID')", review.rideRating(), review.scooterRating(),
+                        + "WHERE id=? AND status IN ('FINISHED','PAID')", review.rideRating(), review.scooterRating(),
                 review.rideComment(), review.scooterComment(), Timestamp.from(review.reviewedAt()), id) == 1;
     }
 
@@ -158,9 +179,9 @@ public class RideRepositoryJdbcImpl implements RideRepository {
         ride.setStartPosY(resultSet.getObject("start_pos_y", Double.class));
         ride.setEndPosX(resultSet.getObject("end_pos_x", Double.class));
         ride.setEndPosY(resultSet.getObject("end_pos_y", Double.class));
-        ride.setLastPosX(resultSet.getObject("last_pos_x",Double.class));
-        ride.setLastPosY(resultSet.getObject("last_pos_y",Double.class));
-        ride.setLastPositionAt(readInstant(resultSet,"last_position_at"));
+        ride.setLastPosX(resultSet.getObject("last_pos_x", Double.class));
+        ride.setLastPosY(resultSet.getObject("last_pos_y", Double.class));
+        ride.setLastPositionAt(readInstant(resultSet, "last_position_at"));
         ride.setDurationSeconds(resultSet.getObject("duration_seconds", Long.class));
         ride.setAmount(resultSet.getBigDecimal("amount"));
         ride.setCurrency(resultSet.getString("currency"));

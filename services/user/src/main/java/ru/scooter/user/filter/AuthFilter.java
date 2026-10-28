@@ -1,8 +1,7 @@
 package ru.scooter.user.filter;
 
 import jakarta.servlet.*;
-import jakarta.servlet.http.*;
-
+import jakarta.servlet.http.HttpServletRequest;
 import ru.scooter.user.config.AppContextListener;
 import ru.scooter.user.dto.AuthPrincipal;
 import ru.scooter.user.exception.ApiException;
@@ -14,9 +13,19 @@ import java.util.Set;
 
 public final class AuthFilter implements Filter {
     public static final String PRINCIPAL = AuthPrincipal.class.getName();
-    private AuthService auth;
     private static final Set<String> PUBLIC_POSTS =
             Set.of("/api/users/register", "/api/users/login");
+    private AuthService auth;
+
+    public static AuthPrincipal principal(HttpServletRequest request) {
+        Object value = request.getAttribute(PRINCIPAL);
+        if (!(value instanceof AuthPrincipal principal)) throw unauthorized();
+        return principal;
+    }
+
+    private static ApiException unauthorized() {
+        return new ApiException(401, "Требуется Authorization: Bearer <JWT>");
+    }
 
     @Override
     public void init(FilterConfig config) {
@@ -43,15 +52,5 @@ public final class AuthFilter implements Filter {
             req.setAttribute(PRINCIPAL, auth.authenticate(token));
         }
         chain.doFilter(request, response);
-    }
-
-    public static AuthPrincipal principal(HttpServletRequest request) {
-        Object value = request.getAttribute(PRINCIPAL);
-        if (!(value instanceof AuthPrincipal principal)) throw unauthorized();
-        return principal;
-    }
-
-    private static ApiException unauthorized() {
-        return new ApiException(401, "Требуется Authorization: Bearer <JWT>");
     }
 }

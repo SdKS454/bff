@@ -17,19 +17,17 @@ public class AuthFilter implements Filter {
     public static final String ATTR_TOKEN = "token";
     public static final String ATTR_ROLE = "role";
     public static final String ATTR_USER_ID = "userId";
-
+    private static final Logger LOG = Logger.getLogger(AuthFilter.class.getName());
     private final java.util.function.Consumer<String> validateToken;
 
     public AuthFilter() {
         this(new UserTokenValidator()::validate);
     }
 
-    // Unit tests may inject a validator; production always validates against User.
+
     AuthFilter(java.util.function.Consumer<String> validateToken) {
         this.validateToken = validateToken;
     }
-
-    private static final Logger LOG = Logger.getLogger(AuthFilter.class.getName());
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -69,8 +67,8 @@ public class AuthFilter implements Filter {
             throw new ApiException(401, "Требуется авторизация");
         }
 
-        // User verifies RS256, issuer, expiry, current role and DB revocation.
-        // Its /validate endpoint does not call Moderation, so this cannot recurse.
+
+
         validateToken.accept(token);
 
         String role = payload.hasNonNull("role") ? payload.get("role").asText() : null;

@@ -1,20 +1,14 @@
 package bff.filter;
 
 import bff.service.ServiceException;
-import bff.web.Tokens;
 import bff.service.UserService;
 import bff.service.impl.JsonText;
 import bff.service.impl.UserServiceRestImpl;
-import jakarta.servlet.Filter;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.FilterConfig;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
+import bff.web.Tokens;
+import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
 

@@ -7,24 +7,20 @@ import java.util.UUID;
 public class Document {
     private UUID id;
     private UUID userId;
-    private String documentType; // RIDE_PAYMENT, USER_BLOCKED, USER_HISTORY
+    private String documentType;
     private UUID sourceId;
     private LocalDate periodFrom;
     private LocalDate periodTo;
     private String payloadJson;
-    public String getPayloadJson(){return payloadJson;}
-    public void setPayloadJson(String value){payloadJson=value;}
-    private String status; // PENDING, GENERATED, FAILED
+    private String status;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
     private OffsetDateTime generatedAt;
     private boolean isDeleted;
     private OffsetDateTime deletedAt;
+    public Document() {
+    }
 
-    // Пустой конструктор (нужен для маппинга из ResultSet)
-    public Document() {}
-
-    // Конструктор для создания нового документа перед сохранением
     public Document(UUID userId, String documentType, UUID sourceId, LocalDate periodFrom, LocalDate periodTo) {
         this.id = UUID.randomUUID();
         this.userId = userId;
@@ -38,40 +34,108 @@ public class Document {
         this.isDeleted = false;
     }
 
-    // --- Геттеры и сеттеры ---
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
+    public String getPayloadJson() {
+        return payloadJson;
+    }
 
-    public UUID getUserId() { return userId; }
-    public void setUserId(UUID userId) { this.userId = userId; }
+    public void setPayloadJson(String value) {
+        payloadJson = value;
+    }
 
-    public String getDocumentType() { return documentType; }
-    public void setDocumentType(String documentType) { this.documentType = documentType; }
 
-    public UUID getSourceId() { return sourceId; }
-    public void setSourceId(UUID sourceId) { this.sourceId = sourceId; }
+    public UUID getId() {
+        return id;
+    }
 
-    public LocalDate getPeriodFrom() { return periodFrom; }
-    public void setPeriodFrom(LocalDate periodFrom) { this.periodFrom = periodFrom; }
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    public LocalDate getPeriodTo() { return periodTo; }
-    public void setPeriodTo(LocalDate periodTo) { this.periodTo = periodTo; }
+    public UUID getUserId() {
+        return userId;
+    }
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+    public void setUserId(UUID userId) {
+        this.userId = userId;
+    }
 
-    public OffsetDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
+    public String getDocumentType() {
+        return documentType;
+    }
 
-    public OffsetDateTime getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(OffsetDateTime updatedAt) { this.updatedAt = updatedAt; }
+    public void setDocumentType(String documentType) {
+        this.documentType = documentType;
+    }
 
-    public OffsetDateTime getGeneratedAt() { return generatedAt; }
-    public void setGeneratedAt(OffsetDateTime generatedAt) { this.generatedAt = generatedAt; }
+    public UUID getSourceId() {
+        return sourceId;
+    }
 
-    public boolean isDeleted() { return isDeleted; }
-    public void setDeleted(boolean deleted) { isDeleted = deleted; }
+    public void setSourceId(UUID sourceId) {
+        this.sourceId = sourceId;
+    }
 
-    public OffsetDateTime getDeletedAt() { return deletedAt; }
-    public void setDeletedAt(OffsetDateTime deletedAt) { this.deletedAt = deletedAt; }
+    public LocalDate getPeriodFrom() {
+        return periodFrom;
+    }
+
+    public void setPeriodFrom(LocalDate periodFrom) {
+        this.periodFrom = periodFrom;
+    }
+
+    public LocalDate getPeriodTo() {
+        return periodTo;
+    }
+
+    public void setPeriodTo(LocalDate periodTo) {
+        this.periodTo = periodTo;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public OffsetDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(OffsetDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public OffsetDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(OffsetDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public OffsetDateTime getGeneratedAt() {
+        return generatedAt;
+    }
+
+    public void setGeneratedAt(OffsetDateTime generatedAt) {
+        this.generatedAt = generatedAt;
+    }
+
+    public boolean isDeleted() {
+        return isDeleted;
+    }
+
+    public void setDeleted(boolean deleted) {
+        isDeleted = deleted;
+    }
+
+    public OffsetDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(OffsetDateTime deletedAt) {
+        this.deletedAt = deletedAt;
+    }
 }

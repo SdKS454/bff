@@ -1,11 +1,11 @@
 package bff.service;
 
-import java.util.UUID;
-
 import bff.dto.AuthRequest;
 import bff.dto.AuthResponse;
 import bff.dto.JsonResponse;
 import bff.dto.UserDto;
+
+import java.util.UUID;
 
 public interface UserService {
 

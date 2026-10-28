@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare a local PostgreSQL/Tomcat stand without Docker or third-party Python packages."""
+
 import argparse
 import fcntl
 import getpass
@@ -65,7 +65,7 @@ def psql(args, database, sql, *, admin=False, credentials=None, admin_password=N
     result = subprocess.run(command, input=sql, text=True, encoding='utf-8', errors='replace',
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=environment, cwd='/')
     if result.returncode:
-        # SQL is sent through stdin, never command-line arguments. Do not log credentials.
+
         raise RuntimeError('PostgreSQL request failed for ' + database + ':\n' + result.stderr.strip())
     return result.stdout.strip()
 
@@ -76,7 +76,7 @@ def prepare(args):
     args.psql = shutil.which(args.psql)
     if not args.psql:
         raise RuntimeError('psql was not found. Install postgresql-client or specify --psql /full/path/to/psql.')
-    # Keep the name psql: on Ubuntu it is a symlink whose wrapper dispatches by argv[0].
+
     args.psql = os.path.abspath(args.psql)
     args.socket_dir = str(Path(args.socket_dir).resolve())
     candidates = [args.java] if args.java else []
@@ -121,7 +121,7 @@ def prepare(args):
     admin = lambda db, sql: psql(args, db, sql, admin=True, admin_password=admin_password)
     info = json.loads(admin('postgres', "SELECT json_build_object('version',current_setting('server_version'),'number',current_setting('server_version_num'),'port',inet_server_port());"))
     print('Connected to PostgreSQL ' + info['version'] + '; requested port ' + str(args.pg_port), flush=True)
-    # All current schemas use built-in gen_random_uuid(), available since PostgreSQL 13.
+
     if int(info['number']) < 130000:
         raise RuntimeError('This native Linux helper requires PostgreSQL 13+; 16+ is recommended for a new installation.')
     OUTPUT.mkdir(mode=0o700, exist_ok=True)
@@ -149,7 +149,8 @@ def prepare(args):
         if admin('postgres', 'SELECT count(*) FROM pg_roles WHERE rolname=' + literal(role) + ';') == '0':
             admin('postgres', "SET password_encryption='scram-sha-256'; CREATE ROLE " + identifier(role) + ' LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD ' + literal(credentials['password']) + ';')
         app = lambda db, sql: psql(args, db, sql, credentials=credentials)
-        app('postgres', 'SELECT 1;')  # Verify that TCP reaches the same managed role before creating databases.
+        app('postgres', 'SELECT 1;')
+        migration_checksums = json.loads((ROOT / 'local-stack/migration-checksums.json').read_text())
         for service, (relative, required) in SCHEMAS.items():
             database = args.database_prefix + service
             owner = admin('postgres', 'SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname=' + literal(database) + ';')
@@ -160,7 +161,7 @@ def prepare(args):
             count = app(database, "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';")
             if count == '0':
                 schema = (ROOT / relative).read_text(encoding='utf-8-sig')
-                # User's original schema already contains BEGIN/COMMIT.
+
                 app(database, schema if service == 'user' else 'BEGIN;\n' + schema + '\nCOMMIT;')
             else:
                 known = app(database, "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN (" + ','.join(literal(t) for t in required) + ');')
@@ -168,6 +169,9 @@ def prepare(args):
                     raise RuntimeError('Unknown/incomplete schema in ' + database + '. No tables were deleted.')
             for migration in sorted((ROOT / 'local-stack/migrations' / service).glob('*.sql')):
                 checksum = hashlib.sha256(migration.read_bytes()).hexdigest()
+                identity = migration_checksums.get(migration.relative_to(ROOT).as_posix())
+                if identity and checksum == identity['sha256']:
+                    checksum = identity['databaseChecksum']
                 name = literal(migration.name)
                 sql = "BEGIN;\nSELECT pg_advisory_xact_lock(27102026);\nCREATE TABLE IF NOT EXISTS schema_migrations(version TEXT PRIMARY KEY,checksum TEXT NOT NULL,applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());\n"
                 sql += 'SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version=' + name + ') AS applied \\gset\n\\if :applied\n'
@@ -208,7 +212,7 @@ def prepare(args):
         for service, values in settings.items():
             values.update(JAVA_HOME=java_home, JRE_HOME=java_home, JAVA_OPTS='-Xms32m -Xmx' + ('512m' if service == 'documents' else '256m') + ' -Dfile.encoding=UTF-8 -Djava.awt.headless=true')
             write_private(OUTPUT / (service + '.env.txt'), ''.join(k + '=' + v + '\n' for k, v in values.items()))
-            write_private(OUTPUT / (service + '.env.sh'), '# Generated local configuration; contains secrets.\n' + ''.join('export ' + k + '=' + shlex.quote(v) + '\n' for k, v in values.items()))
+            write_private(OUTPUT / (service + '.env.sh'), ''.join('export ' + k + '=' + shlex.quote(v) + '\n' for k, v in values.items()))
             write_private(OUTPUT / (service + '.env.json'), json.dumps(values, ensure_ascii=False, indent=2) + '\n')
         write_private(OUTPUT / 'bff.vmoptions.txt', vm_options + '\n')
         print('Ready. Settings: ' + str(OUTPUT) + '/*.env.txt, *.env.sh, *.env.json', flush=True)

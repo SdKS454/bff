@@ -1,17 +1,35 @@
 package ru.scooter.user.config;
 
-import jakarta.servlet.*;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletContextEvent;
+import jakarta.servlet.ServletContextListener;
+import ru.scooter.user.client.HttpModerationClient;
+import ru.scooter.user.client.ModerationClient;
+import ru.scooter.user.repository.ConnectionProvider;
+import ru.scooter.user.repository.TokenRepository;
+import ru.scooter.user.repository.UserRepository;
+import ru.scooter.user.repository.jdbc.DriverManagerConnectionProvider;
+import ru.scooter.user.repository.jdbc.JdbcTokenRepository;
+import ru.scooter.user.repository.jdbc.JdbcUserRepository;
+import ru.scooter.user.service.AuthService;
+import ru.scooter.user.service.ModerationService;
+import ru.scooter.user.service.UserService;
+import ru.scooter.user.util.BCryptPasswordHasher;
+import ru.scooter.user.util.JwtUtil;
+import ru.scooter.user.util.PemKeys;
 
-import ru.scooter.user.client.*;
-import ru.scooter.user.repository.*;
-import ru.scooter.user.repository.jdbc.*;
-import ru.scooter.user.service.*;
-import ru.scooter.user.util.*;
-
-import java.time.*;
+import java.time.Clock;
+import java.time.Duration;
 
 public final class AppContextListener implements ServletContextListener {
     public static final String COMPONENTS = AppComponents.class.getName();
+
+    public static AppComponents components(ServletContext context) {
+        Object value = context.getAttribute(COMPONENTS);
+        if (!(value instanceof AppComponents components))
+            throw new IllegalStateException("Application is not initialized");
+        return components;
+    }
 
     @Override
     public void contextInitialized(ServletContextEvent event) {
@@ -21,15 +39,12 @@ public final class AppContextListener implements ServletContextListener {
             ConnectionProvider connections =
                     new DriverManagerConnectionProvider(
                             config.dbUrl(), config.dbUser(), config.dbPassword());
-            // Verify both tables at startup; migrations are deliberately applied explicitly, never
-            // during
-            // a request.
             try (java.sql.Connection c = connections.getConnection();
-                    java.sql.Statement s = c.createStatement()) {
+                 java.sql.Statement s = c.createStatement()) {
                 s.executeQuery(
                                 "SELECT"
-                                    + " id,login,password_hash,full_name,birth_date,avatar_url,role,created_at,updated_at,is_deleted,deleted_at"
-                                    + " FROM users WHERE FALSE")
+                                        + " id,login,password_hash,full_name,birth_date,avatar_url,role,created_at,updated_at,is_deleted,deleted_at"
+                                        + " FROM users WHERE FALSE")
                         .close();
                 s.executeQuery(
                                 "SELECT id,user_id,token_hash,created_at,expire_at,is_valid FROM"
@@ -70,12 +85,5 @@ public final class AppContextListener implements ServletContextListener {
             throw new IllegalStateException(
                     "User Service startup failed: check environment, schema and RSA key pair", e);
         }
-    }
-
-    public static AppComponents components(ServletContext context) {
-        Object value = context.getAttribute(COMPONENTS);
-        if (!(value instanceof AppComponents components))
-            throw new IllegalStateException("Application is not initialized");
-        return components;
     }
 }

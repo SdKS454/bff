@@ -1,27 +1,23 @@
 package ru.scooter.user.util;
 
 import io.jsonwebtoken.*;
-
 import ru.scooter.user.entity.Role;
 import ru.scooter.user.exception.ApiException;
 
-import java.security.*;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.*;
+import java.util.Date;
+import java.util.UUID;
 
 public final class JwtUtil {
-    public record IssuedToken(String value, UUID id, Instant issuedAt, Instant expiresAt) {}
-
-    public record VerifiedToken(UUID userId, Role role, UUID tokenId, Instant expiresAt) {}
-
     private final PrivateKey privateKey;
     private final JwtParser parser;
     private final String issuer;
     private final long ttlSeconds;
     private final Clock clock;
-
     public JwtUtil(
             PrivateKey privateKey,
             PublicKey publicKey,
@@ -42,7 +38,6 @@ public final class JwtUtil {
                         .add(Jwts.SIG.RS256)
                         .and()
                         .build();
-        // Fail at startup rather than issuing tokens nobody can verify when the key pair differs.
         verify(issue(UUID.randomUUID(), Role.USER).value());
     }
 
@@ -90,5 +85,11 @@ public final class JwtUtil {
 
     public long ttlSeconds() {
         return ttlSeconds;
+    }
+
+    public record IssuedToken(String value, UUID id, Instant issuedAt, Instant expiresAt) {
+    }
+
+    public record VerifiedToken(UUID userId, Role role, UUID tokenId, Instant expiresAt) {
     }
 }

@@ -29,16 +29,13 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class ModerationServiceImplTest {
 
+    private final UUID userId = UUID.randomUUID();
     @Mock
     private BlockDao blockDao;
-
     @Mock
     private ReasonDao reasonDao;
-
     @InjectMocks
     private ModerationServiceImpl service;
-
-    private final UUID userId = UUID.randomUUID();
 
     @Test
     @DisplayName("getStatus: пользователя нет в блокировках -> не заблокирован")
@@ -96,7 +93,7 @@ class ModerationServiceImplTest {
         verify(blockDao).deleteByUserId(userId);
     }
 
-    // ---------- ban ----------
+
 
     @Test
     @DisplayName("ban: null / пустая / пробельная причина -> ValidationException")
@@ -121,7 +118,7 @@ class ModerationServiceImplTest {
     @Test
     @DisplayName("ban: временная причина -> blockedUntil = now + длительность причины")
     void ban_temporaryReason_setsBlockedUntil() {
-        BlockReason reason = BlockReason.RIDE_DOUBLE_RIDING; // 3 дня
+        BlockReason reason = BlockReason.RIDE_DOUBLE_RIDING;
         Instant before = Instant.now();
         stubEmptyThenInserted();
 
@@ -161,7 +158,7 @@ class ModerationServiceImplTest {
         BlockStatus status = service.ban(userId, BlockReason.RIDE_DANGEROUS.name());
 
         assertTrue(status.isBlocked());
-        assertEquals("PAYMENT_DEBT", status.getReasonType()); // причина осталась прежней
+        assertEquals("PAYMENT_DEBT", status.getReasonType());
         verify(blockDao, never()).insertBlock(any());
     }
 
@@ -223,9 +220,9 @@ class ModerationServiceImplTest {
         List<Reason> result = service.getReasons();
 
         assertEquals(List.of(
-                BlockReason.RIDE_DOUBLE_RIDING,
-                BlockReason.PAYMENT_DEBT,
-                BlockReason.SERVICE_API_ABUSE),
+                        BlockReason.RIDE_DOUBLE_RIDING,
+                        BlockReason.PAYMENT_DEBT,
+                        BlockReason.SERVICE_API_ABUSE),
                 result.stream().map(Reason::getReasonType).toList());
     }
 

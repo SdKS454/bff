@@ -1,13 +1,17 @@
 package ru.scooter.user.service;
 
 import ru.scooter.user.client.ModerationClient;
-import ru.scooter.user.dto.*;
-import ru.scooter.user.entity.*;
+import ru.scooter.user.dto.AuthPrincipal;
+import ru.scooter.user.dto.UserResponse;
+import ru.scooter.user.dto.UserSummary;
+import ru.scooter.user.entity.Role;
+import ru.scooter.user.entity.User;
 import ru.scooter.user.exception.ApiException;
 import ru.scooter.user.repository.UserRepository;
 import ru.scooter.user.util.Validation;
 
-import java.util.*;
+import java.util.List;
+import java.util.UUID;
 
 public final class UserService {
     private final UserRepository users;
@@ -16,6 +20,16 @@ public final class UserService {
     public UserService(UserRepository users, ModerationClient moderation) {
         this.users = users;
         this.moderation = moderation;
+    }
+
+    public static void requireAdmin(AuthPrincipal principal) {
+        if (principal.user().role() != Role.ADMIN)
+            throw new ApiException(403, "Требуется роль ADMIN");
+    }
+
+    public static void requireSelfOrAdmin(UUID id, AuthPrincipal principal) {
+        if (principal.user().role() != Role.ADMIN && !principal.user().id().equals(id))
+            throw new ApiException(403, "Нет доступа к чужому пользователю");
     }
 
     public boolean exists(String login) {
@@ -49,15 +63,5 @@ public final class UserService {
         return users.findById(id)
                 .filter(u -> !u.deleted())
                 .orElseThrow(() -> new ApiException(404, "Пользователь не найден"));
-    }
-
-    public static void requireAdmin(AuthPrincipal principal) {
-        if (principal.user().role() != Role.ADMIN)
-            throw new ApiException(403, "Требуется роль ADMIN");
-    }
-
-    public static void requireSelfOrAdmin(UUID id, AuthPrincipal principal) {
-        if (principal.user().role() != Role.ADMIN && !principal.user().id().equals(id))
-            throw new ApiException(403, "Нет доступа к чужому пользователю");
     }
 }

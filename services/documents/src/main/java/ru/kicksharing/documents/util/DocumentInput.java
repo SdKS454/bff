@@ -1,12 +1,14 @@
 package ru.kicksharing.documents.util;
 
 import ru.kicksharing.documents.dto.request.GenerateDocumentRequest;
+
 import java.time.LocalDate;
 import java.util.UUID;
 
-/** The wire format uses UUID/date strings, never Jackson's array/numeric shortcuts. */
 public final class DocumentInput {
-    private DocumentInput() {}
+    private DocumentInput() {
+    }
+
     public static GenerateDocumentRequest parse(String json) {
         try {
             var tree = JsonUtil.getMapper().readTree(json);
@@ -27,6 +29,8 @@ public final class DocumentInput {
                 }
             }
             return JsonUtil.getMapper().treeToValue(tree, GenerateDocumentRequest.class);
-        } catch (Exception e) { throw new IllegalArgumentException("Некорректный JSON или тип поля", e); }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Некорректный JSON или тип поля", e);
+        }
     }
 }

@@ -13,8 +13,9 @@ public class DatabaseConnection {
         try {
             Class.forName("org.postgresql.Driver");
             return DriverManager.getConnection(URL, USER, PASSWORD);
-        } catch (ClassNotFoundException e) { throw new IllegalStateException("PostgreSQL driver not found", e); }
-        catch (SQLException e) {
+        } catch (ClassNotFoundException e) {
+            throw new IllegalStateException("PostgreSQL driver not found", e);
+        } catch (SQLException e) {
             if (e.getSQLState() != null && e.getSQLState().startsWith("08"))
                 throw ru.kicksharing.documents.exception.ApiException.serviceUnavailable("База документов недоступна");
             throw e;

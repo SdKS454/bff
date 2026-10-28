@@ -1,14 +1,17 @@
 package ru.scooter.user.util;
 
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.*;
 import java.security.interfaces.RSAKey;
-import java.security.spec.*;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
 public final class PemKeys {
-    private PemKeys() {}
+    private PemKeys() {
+    }
 
     public static PrivateKey privateKey(Path file) throws IOException, GeneralSecurityException {
         PrivateKey key =

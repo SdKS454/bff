@@ -1,0 +1,6 @@
+{
+  "local-stack/migrations/ride/002_reviews.sql": {
+    "sha256": "dd5aeb191f0edad5210d0741fdd5617d4ed20df3997c76020158149228fc0e75",
+    "databaseChecksum": "96a19a0c6fab01b03b1239a334e2d09b1f0d1b2833bc418df261261a371b504c"
+  }
+}

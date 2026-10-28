@@ -1,8 +1,8 @@
 package ru.scooter.user.filter;
 
 import jakarta.servlet.*;
-import jakarta.servlet.http.*;
-
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import ru.scooter.user.exception.ApiException;
 import ru.scooter.user.exception.DataAccessException;
 import ru.scooter.user.util.Json;

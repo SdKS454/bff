@@ -17,13 +17,12 @@ public class AppConfig {
         }
     }
 
-    // Метод, который сначала смотрит в переменные окружения (для Docker), потом в properties
     public static String get(String key) {
         String property = System.getProperty("documents." + key);
         if (property != null) return property;
         String envKey = key.replace('.', '_').toUpperCase();
         String envValue = System.getenv(envKey);
-        if(envValue==null && key.equals("db.username"))envValue=System.getenv("DB_USER");
+        if (envValue == null && key.equals("db.username")) envValue = System.getenv("DB_USER");
         return envValue != null ? envValue : props.getProperty(key);
     }
 }

@@ -3,7 +3,6 @@ package bff.servlet;
 import bff.dto.JsonResponse;
 import bff.service.ServiceException;
 import bff.service.UserService;
-import bff.service.impl.JsonText;
 import bff.service.impl.UserServiceRestImpl;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;

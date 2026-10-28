@@ -12,10 +12,22 @@
 <p><b>ID поездки:</b> <span th:text="${doc.rideId}"></span></p>
 <p><b>Самокат:</b> <span th:text="${doc.numberPlate}"></span></p>
 <table>
-    <tr><th>Начало</th><td th:text="${doc.startedAt}"></td></tr>
-    <tr><th>Окончание</th><td th:text="${doc.finishedAt}"></td></tr>
-    <tr><th>Сумма</th><td><span th:text="${doc.amount}"></span> <span th:text="${doc.currency}"></span></td></tr>
-    <tr><th>Оплачено</th><td th:text="${doc.paidAt}"></td></tr>
+    <tr>
+        <th>Начало</th>
+        <td th:text="${doc.startedAt}"></td>
+    </tr>
+    <tr>
+        <th>Окончание</th>
+        <td th:text="${doc.finishedAt}"></td>
+    </tr>
+    <tr>
+        <th>Сумма</th>
+        <td><span th:text="${doc.amount}"></span> <span th:text="${doc.currency}"></span></td>
+    </tr>
+    <tr>
+        <th>Оплачено</th>
+        <td th:text="${doc.paidAt}"></td>
+    </tr>
 </table>
 <p class="footer">Документ сгенерирован автоматически сервисом KickSharing.</p>
 </body>

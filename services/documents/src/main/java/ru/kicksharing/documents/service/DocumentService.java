@@ -35,12 +35,14 @@ public class DocumentService {
 
     DocumentService(DocumentRepository repository, UserClient userClient, RideClient rideClient,
                     ModerationClient moderationClient, PdfService pdfService) {
-        this.repository = repository; this.userClient = userClient; this.rideClient = rideClient;
-        this.moderationClient = moderationClient; this.pdfService = pdfService;
+        this.repository = repository;
+        this.userClient = userClient;
+        this.rideClient = rideClient;
+        this.moderationClient = moderationClient;
+        this.pdfService = pdfService;
     }
 
     public byte[] generate(GenerateDocumentRequest req, String token) {
-        // 1. Проверка безопасности: userId из тела == userId из токена
         if (req == null || req.getUserId() == null || req.getDocType() == null)
             throw ApiException.badRequest("userId и docType обязательны");
         UUID tokenUserId = JwtUtil.extractUserId(token);
@@ -48,7 +50,6 @@ public class DocumentService {
             throw ApiException.forbidden("Нельзя запросить документ другого пользователя");
         }
 
-        // Downstream clients prepend Bearer themselves; pass only the raw JWT.
         String downstreamJwt = token.substring(7).trim();
         userClient.validate(downstreamJwt);
         String docType = normalizeDocType(req.getDocType());
@@ -62,80 +63,107 @@ public class DocumentService {
         if (!"RIDE_PAYMENT".equals(docType) && req.getSourceId() != null)
             throw ApiException.badRequest("sourceId нужен только для RIDE_PAYMENT");
 
-        // 2. Создаем запись в БД со статусом PENDING
         Document document = new Document(req.getUserId(), docType, req.getSourceId(), req.getFrom(), req.getTo());
         repository.save(document);
 
         try {
-            // 3. Маршрутизация по типу
-            Object data = buildData(req,downstreamJwt,docType);
-            byte[] pdf = renderData(docType,data);
+            Object data = buildData(req, downstreamJwt, docType);
+            byte[] pdf = renderData(docType, data);
 
-            // 4. Обновляем статус на GENERATED
-            repository.markGenerated(document.getId(),ru.kicksharing.documents.util.JsonUtil.toJson(data),OffsetDateTime.now());
+            repository.markGenerated(document.getId(), ru.kicksharing.documents.util.JsonUtil.toJson(data), OffsetDateTime.now());
             return pdf;
 
         } catch (Exception e) {
-            // При любой ошибке помечаем FAILED
-            try { repository.updateStatus(document.getId(), "FAILED", null); }
-            catch (Exception markingFailure) { e.addSuppressed(markingFailure); }
+            try {
+                repository.updateStatus(document.getId(), "FAILED", null);
+            } catch (Exception markingFailure) {
+                e.addSuppressed(markingFailure);
+            }
             throw e;
         }
     }
 
-    private Object buildData(GenerateDocumentRequest req,String jwt,String type) {
-        return switch(type) {
-            case "RIDE_PAYMENT" -> buildRidePayment(req,jwt);
-            case "USER_BLOCKED" -> buildUserBlocked(req,jwt);
-            case "USER_HISTORY" -> buildUserHistory(req,jwt);
+    private Object buildData(GenerateDocumentRequest req, String jwt, String type) {
+        return switch (type) {
+            case "RIDE_PAYMENT" -> buildRidePayment(req, jwt);
+            case "USER_BLOCKED" -> buildUserBlocked(req, jwt);
+            case "USER_HISTORY" -> buildUserHistory(req, jwt);
             default -> throw ApiException.badRequest("Неизвестный docType");
         };
     }
-    private byte[] renderData(String type,Object data) {
-        Context ctx=new Context();ctx.setVariable("doc",data);
-        String template=switch(type){case "RIDE_PAYMENT"->"ride-payment";case "USER_BLOCKED"->"user-blocked";case "USER_HISTORY"->"user-history";default->throw ApiException.badRequest("Неизвестный docType");};
-        return pdfService.generatePdf(template,ctx);
-    }
-    private UUID actor(String auth) {
-        UUID id=JwtUtil.extractUserId(auth);userClient.validate(auth.substring(7).trim());return id;
-    }
-    private Document owned(UUID id,UUID owner,boolean includeDeleted) {
-        Document document=repository.findById(id,includeDeleted).orElseThrow(()->ApiException.notFound("Документ не найден"));
-        if(!owner.equals(document.getUserId()))throw ApiException.forbidden("Чужой документ");return document;
-    }
-    public java.util.List<ru.kicksharing.documents.dto.DocumentMetadata> history(String auth,int limit,int offset) {
-        UUID owner=actor(auth);
-        if(limit<1||limit>100||offset<0)throw ApiException.badRequest("Некорректные limit/offset");
-        repository.expirePending(owner);
-        return repository.findByUserId(owner,limit,offset).stream().map(ru.kicksharing.documents.dto.DocumentMetadata::of).toList();
-    }
-    public ru.kicksharing.documents.dto.DocumentMetadata metadata(String auth,UUID id) {
-        return ru.kicksharing.documents.dto.DocumentMetadata.of(owned(id,actor(auth),false));
-    }
-    public void delete(String auth,UUID id) {
-        UUID owner=actor(auth);Document document=owned(id,owner,true);
-        if(!document.isDeleted())repository.softDelete(id,owner);
-    }
-    public byte[] download(String auth,UUID id) {
-        Document document=owned(id,actor(auth),false);
-        if(!"GENERATED".equals(document.getStatus()))throw ApiException.conflict("Документ не был сформирован: повторите генерацию");
-        GenerateDocumentRequest req=new GenerateDocumentRequest();
-        req.setUserId(document.getUserId());req.setDocType(document.getDocumentType());req.setSourceId(document.getSourceId());req.setFrom(document.getPeriodFrom());req.setTo(document.getPeriodTo());
-        // PDF bytes are not stored. A saved data snapshot preserves the historical content.
-        Object data;
-        if(document.getPayloadJson()!=null) {
-            Class<?> type=switch(document.getDocumentType()) {case "RIDE_PAYMENT"->RidePaymentDto.class;case "USER_BLOCKED"->UserBlockedDto.class;case "USER_HISTORY"->UserHistoryDto.class;default->throw new ApiException(502,"Неизвестный тип снимка документа");};
-            try{data=ru.kicksharing.documents.util.JsonUtil.fromJson(document.getPayloadJson(),type);if(data==null)throw new IllegalArgumentException();}
-            catch(RuntimeException e){throw new ApiException(502,"Повреждён снимок документа");}
-        }else {
-            // Compatibility with documents generated before snapshots were introduced.
-            data=buildData(req,auth.substring(7).trim(),document.getDocumentType());
-            repository.markGenerated(id,ru.kicksharing.documents.util.JsonUtil.toJson(data),document.getGeneratedAt());
-        }
-        return renderData(document.getDocumentType(),data);
+
+    private byte[] renderData(String type, Object data) {
+        Context ctx = new Context();
+        ctx.setVariable("doc", data);
+        String template = switch (type) {
+            case "RIDE_PAYMENT" -> "ride-payment";
+            case "USER_BLOCKED" -> "user-blocked";
+            case "USER_HISTORY" -> "user-history";
+            default -> throw ApiException.badRequest("Неизвестный docType");
+        };
+        return pdfService.generatePdf(template, ctx);
     }
 
-    // BFF может присылать RECEIPT — приводим к нашему RIDE_PAYMENT
+    private UUID actor(String auth) {
+        UUID id = JwtUtil.extractUserId(auth);
+        userClient.validate(auth.substring(7).trim());
+        return id;
+    }
+
+    private Document owned(UUID id, UUID owner, boolean includeDeleted) {
+        Document document = repository.findById(id, includeDeleted).orElseThrow(() -> ApiException.notFound("Документ не найден"));
+        if (!owner.equals(document.getUserId())) throw ApiException.forbidden("Чужой документ");
+        return document;
+    }
+
+    public java.util.List<ru.kicksharing.documents.dto.DocumentMetadata> history(String auth, int limit, int offset) {
+        UUID owner = actor(auth);
+        if (limit < 1 || limit > 100 || offset < 0) throw ApiException.badRequest("Некорректные limit/offset");
+        repository.expirePending(owner);
+        return repository.findByUserId(owner, limit, offset).stream().map(ru.kicksharing.documents.dto.DocumentMetadata::of).toList();
+    }
+
+    public ru.kicksharing.documents.dto.DocumentMetadata metadata(String auth, UUID id) {
+        return ru.kicksharing.documents.dto.DocumentMetadata.of(owned(id, actor(auth), false));
+    }
+
+    public void delete(String auth, UUID id) {
+        UUID owner = actor(auth);
+        Document document = owned(id, owner, true);
+        if (!document.isDeleted()) repository.softDelete(id, owner);
+    }
+
+    public byte[] download(String auth, UUID id) {
+        Document document = owned(id, actor(auth), false);
+        if (!"GENERATED".equals(document.getStatus()))
+            throw ApiException.conflict("Документ не был сформирован: повторите генерацию");
+        GenerateDocumentRequest req = new GenerateDocumentRequest();
+        req.setUserId(document.getUserId());
+        req.setDocType(document.getDocumentType());
+        req.setSourceId(document.getSourceId());
+        req.setFrom(document.getPeriodFrom());
+        req.setTo(document.getPeriodTo());
+        Object data;
+        if (document.getPayloadJson() != null) {
+            Class<?> type = switch (document.getDocumentType()) {
+                case "RIDE_PAYMENT" -> RidePaymentDto.class;
+                case "USER_BLOCKED" -> UserBlockedDto.class;
+                case "USER_HISTORY" -> UserHistoryDto.class;
+                default -> throw new ApiException(502, "Неизвестный тип снимка документа");
+            };
+            try {
+                data = ru.kicksharing.documents.util.JsonUtil.fromJson(document.getPayloadJson(), type);
+                if (data == null) throw new IllegalArgumentException();
+            } catch (RuntimeException e) {
+                throw new ApiException(502, "Повреждён снимок документа");
+            }
+        } else {
+            data = buildData(req, auth.substring(7).trim(), document.getDocumentType());
+            repository.markGenerated(id, ru.kicksharing.documents.util.JsonUtil.toJson(data), document.getGeneratedAt());
+        }
+        return renderData(document.getDocumentType(), data);
+    }
+
     private String normalizeDocType(String docType) {
         if ("RECEIPT".equals(docType)) return "RIDE_PAYMENT";
         return docType;
@@ -145,7 +173,8 @@ public class DocumentService {
         if (req.getSourceId() == null) throw ApiException.badRequest("sourceId обязателен для RIDE_PAYMENT");
 
         RideResponse ride = rideClient.getRide(req.getSourceId().toString(), token);
-        if (!ru.kicksharing.documents.client.ServiceHttp.sameId(ride.getUserId(), req.getUserId().toString())) throw ApiException.forbidden("Чужая поездка");
+        if (!ru.kicksharing.documents.client.ServiceHttp.sameId(ride.getUserId(), req.getUserId().toString()))
+            throw ApiException.forbidden("Чужая поездка");
         if (!"PAID".equals(ride.getStatus())) throw ApiException.conflict("Поездка не оплачена");
 
         UserResponse user = userClient.getUser(req.getUserId().toString(), token);
@@ -188,7 +217,6 @@ public class DocumentService {
         UserResponse user = userClient.getUser(req.getUserId().toString(), token);
         List<RideResponse> rides = rideClient.getUserRides(req.getUserId().toString(), token);
 
-        // Фильтруем по периоду
         List<RidePaymentDto> filtered = rides.stream()
                 .filter(r -> req.getUserId().toString().equals(r.getUserId()))
                 .filter(r -> r.getStartedAt() != null)

@@ -18,6 +18,15 @@ public class BlockDaoImpl implements BlockDao {
     private static final String SQL_DELETE_BY_USERID = "DELETE FROM blocked_users WHERE user_id=?;";
     private static final String SQL_FIND_ALL = "SELECT b.user_id, r.type AS reason_type, b.blocked_at, b.blocked_until FROM blocked_users b JOIN reasons r ON r.id = b.reason_id WHERE b.blocked_until IS NULL OR b.blocked_until > NOW() ORDER BY b.blocked_at DESC LIMIT ? OFFSET ?;";
 
+    private static BlockedUser mapper(ResultSet rs) throws SQLException {
+        Timestamp blockedUntil = rs.getTimestamp("blocked_until");
+        return new BlockedUser(
+                UUID.fromString(rs.getString("user_id")),
+                BlockReason.valueOf(rs.getString("reason_type")),
+                rs.getTimestamp("blocked_at").toInstant(),
+                blockedUntil == null ? null : blockedUntil.toInstant());
+    }
+
     @Override
     public Optional<BlockedUser> findByUserId(UUID userId) {
         try (Connection connection = DbConnection.getConnection();
@@ -69,22 +78,13 @@ public class BlockDaoImpl implements BlockDao {
             preparedStatement.setInt(1, limit);
             preparedStatement.setInt(2, offset);
             ResultSet rs = preparedStatement.executeQuery();
-            while (rs.next()){
+            while (rs.next()) {
                 blockedUsers.add(mapper(rs));
             }
             return blockedUsers;
         } catch (SQLException e) {
             throw new RuntimeException("Ошибка получения списка блокировок", e);
         }
-    }
-
-    private static BlockedUser mapper(ResultSet rs) throws SQLException {
-        Timestamp blockedUntil = rs.getTimestamp("blocked_until");
-        return new BlockedUser(
-                UUID.fromString(rs.getString("user_id")),
-                BlockReason.valueOf(rs.getString("reason_type")),
-                rs.getTimestamp("blocked_at").toInstant(),
-                blockedUntil == null ? null : blockedUntil.toInstant());
     }
 
 }

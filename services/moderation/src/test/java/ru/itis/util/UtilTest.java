@@ -20,11 +20,39 @@ import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 public class UtilTest {
+
+    static HttpServletRequest requestWithBody(String body) throws IOException {
+        HttpServletRequest req = mock(HttpServletRequest.class);
+        when(req.getInputStream()).thenReturn(servletStream(body));
+        return req;
+    }
+
+    public static ServletInputStream servletStream(String body) {
+        ByteArrayInputStream in = new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
+        return new ServletInputStream() {
+            @Override
+            public boolean isFinished() {
+                return in.available() == 0;
+            }
+
+            @Override
+            public boolean isReady() {
+                return true;
+            }
+
+            @Override
+            public void setReadListener(ReadListener readListener) {
+            }
+
+            @Override
+            public int read() {
+                return in.read();
+            }
+        };
+    }
 
     @Test
     @DisplayName("parseUuid: корректный UUID (в т.ч. в верхнем регистре) разбирается")
@@ -52,7 +80,6 @@ public class UtilTest {
         ApiException ex = assertThrows(ApiException.class, () -> Util.parseUuid(null));
         assertEquals(400, ex.getStatus());
     }
-
 
     @Test
     @DisplayName("parseInt: null и пустая строка -> значение по умолчанию")
@@ -91,7 +118,6 @@ public class UtilTest {
 
         assertEquals("2026-03-15T10:20:30Z", Util.formatDate(instant));
     }
-
 
     @Test
     @DisplayName("readBody: валидный JSON десериализуется в DTO")
@@ -155,21 +181,5 @@ public class UtilTest {
 
         verify(resp).setStatus(404);
         assertTrue(out.toString().contains("Не найдено"));
-    }
-
-    static HttpServletRequest requestWithBody(String body) throws IOException {
-        HttpServletRequest req = mock(HttpServletRequest.class);
-        when(req.getInputStream()).thenReturn(servletStream(body));
-        return req;
-    }
-
-    public static ServletInputStream servletStream(String body) {
-        ByteArrayInputStream in = new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
-        return new ServletInputStream() {
-            @Override public boolean isFinished() { return in.available() == 0; }
-            @Override public boolean isReady() { return true; }
-            @Override public void setReadListener(ReadListener readListener) { }
-            @Override public int read() { return in.read(); }
-        };
     }
 }

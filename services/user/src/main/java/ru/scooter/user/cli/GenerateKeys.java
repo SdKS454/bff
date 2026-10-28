@@ -1,12 +1,17 @@
 package ru.scooter.user.cli;
 
 import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
-import java.security.*;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.util.Base64;
 
 public final class GenerateKeys {
-    private GenerateKeys() {}
+    private GenerateKeys() {
+    }
 
     public static void main(String[] args) throws Exception {
         if (args.length != 1)
@@ -35,7 +40,7 @@ public final class GenerateKeys {
                 "-----BEGIN "
                         + type
                         + "-----\n"
-                        + Base64.getMimeEncoder(64, new byte[] {10}).encodeToString(bytes)
+                        + Base64.getMimeEncoder(64, new byte[]{10}).encodeToString(bytes)
                         + "\n-----END "
                         + type
                         + "-----\n";

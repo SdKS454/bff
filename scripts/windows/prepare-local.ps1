@@ -110,6 +110,7 @@ try {
         user = @('users','tokens'); moderation = @('reasons','blocked_users')
         scooter = @('scooter','scooter_reservations'); ride = @('rates','rides'); documents = @('documents')
     }
+    $migrationChecksums = Get-Content -Raw (Join-Path $root 'local-stack/migration-checksums.json') | ConvertFrom-Json
     foreach ($service in $schemas.Keys) {
         $database = $DatabasePrefix + $service
         if ((Invoke-Psql 'postgres' "SELECT count(*) FROM pg_database WHERE datname='$database';" '') -eq '0') {

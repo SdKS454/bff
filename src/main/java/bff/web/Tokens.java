@@ -4,10 +4,12 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 
 public final class Tokens {
-    private Tokens() { }
+    private Tokens() {
+    }
+
     public static String get(HttpServletRequest req) {
         String header = req.getHeader("Authorization");
-        // An explicit invalid header must never fall back to a privileged session.
+
         if (header != null) {
             if (!header.regionMatches(true, 0, "Bearer ", 0, 7)) return null;
             String token = header.substring(7).trim();

@@ -4,16 +4,20 @@ import com.fasterxml.jackson.databind.JsonNode;
 import ru.kicksharing.documents.config.AppConfig;
 import ru.kicksharing.documents.exception.ApiException;
 import ru.kicksharing.documents.util.JsonUtil;
+
 import java.io.IOException;
 import java.net.URI;
-import java.net.http.*;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 
-/** Original JWT only; no redirects or leaking upstream bodies into error messages. */
 public final class ServiceHttp {
     private static final HttpClient CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(2)).followRedirects(HttpClient.Redirect.NEVER).build();
-    private ServiceHttp() {}
+
+    private ServiceHttp() {
+    }
 
     public static HttpResponse<String> get(String baseKey, String path, String jwt) {
         try {
@@ -49,21 +53,30 @@ public final class ServiceHttp {
             JsonNode value = JsonUtil.getMapper().readTree(response.body());
             if (value == null || value.isNull()) throw badResponse();
             return value;
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) { throw badResponse(); }
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw badResponse();
+        }
     }
 
     public static <T> T object(JsonNode value, Class<T> type) {
         if (!value.isObject()) throw badResponse();
-        try { return JsonUtil.getMapper().treeToValue(value, type); }
-        catch (com.fasterxml.jackson.core.JsonProcessingException | IllegalArgumentException e) { throw badResponse(); }
+        try {
+            return JsonUtil.getMapper().treeToValue(value, type);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException | IllegalArgumentException e) {
+            throw badResponse();
+        }
     }
 
     public static boolean sameId(String actual, String expected) {
         try {
             return actual != null && actual.matches("[0-9a-fA-F-]{36}")
                     && java.util.UUID.fromString(actual).equals(java.util.UUID.fromString(expected));
-        } catch (IllegalArgumentException e) { return false; }
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
-    public static ApiException badResponse() { return new ApiException(502, "Некорректный ответ зависимого сервиса"); }
+    public static ApiException badResponse() {
+        return new ApiException(502, "Некорректный ответ зависимого сервиса");
+    }
 }

@@ -71,8 +71,12 @@ public class RideProxyServlet extends BaseServlet {
             }
             if (path.matches("^/[^/]+/pay$")) {
                 java.util.UUID id;
-                try { id = JsonText.uuid(path.split("/")[1]); }
-                catch (IllegalArgumentException e) { writeError(resp, 404, "Не найдено"); return; }
+                try {
+                    id = JsonText.uuid(path.split("/")[1]);
+                } catch (IllegalArgumentException e) {
+                    writeError(resp, 404, "Не найдено");
+                    return;
+                }
                 JsonResponse paid = rideService.pay(jwt, id);
                 writeJson(resp, paid.status(), paid.body());
                 return;
@@ -99,18 +103,23 @@ public class RideProxyServlet extends BaseServlet {
             if (path.matches("^/[^/]+/review$")) {
                 java.util.UUID id = JsonText.uuid(path.split("/")[1]);
                 String json = JsonText.read(req.getInputStream());
-                JsonText.object(json); // Reject malformed JSON before forwarding; Ride validates review fields.
+                JsonText.object(json);
                 JsonResponse reviewed = rideService.review(jwt, id, json);
                 writeJson(resp, reviewed.status(), reviewed.body());
                 return;
             }
             if (path.matches("^/[^/]+/(finish|position)$")) {
                 java.util.UUID id;
-                try { id = JsonText.uuid(path.split("/")[1]); }
-                catch (IllegalArgumentException e) { writeError(resp, 404, "Не найдено"); return; }
+                try {
+                    id = JsonText.uuid(path.split("/")[1]);
+                } catch (IllegalArgumentException e) {
+                    writeError(resp, 404, "Не найдено");
+                    return;
+                }
                 EndRideRequest body = readFinish(req);
-                JsonResponse finished = path.endsWith("/position")?rideService.position(jwt,id,body):rideService.finish(jwt, id, body);
-                if(finished.status()==204)resp.setStatus(204);else writeJson(resp, finished.status(), finished.body());
+                JsonResponse finished = path.endsWith("/position") ? rideService.position(jwt, id, body) : rideService.finish(jwt, id, body);
+                if (finished.status() == 204) resp.setStatus(204);
+                else writeJson(resp, finished.status(), finished.body());
                 return;
             }
             writeError(resp, HttpServletResponse.SC_NOT_FOUND, "Не найдено");

@@ -1,23 +1,27 @@
 package ru.scooter.user;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 import io.jsonwebtoken.Jwts;
-
-import org.junit.jupiter.api.*;
-
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import ru.scooter.user.entity.Role;
 import ru.scooter.user.exception.ApiException;
 import ru.scooter.user.util.JwtUtil;
 
-import java.security.*;
-import java.time.*;
-import java.util.*;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.Date;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 class JwtUtilTest {
-    private static KeyPair keys;
     private static final Instant NOW = Instant.parse("2026-10-18T12:00:00Z");
     private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
+    private static KeyPair keys;
 
     @BeforeAll
     static void keys() throws Exception {
@@ -56,8 +60,8 @@ class JwtUtilTest {
         assertEquals(
                 401,
                 assertThrows(
-                                ApiException.class,
-                                () -> jwt(Clock.offset(CLOCK, Duration.ofHours(2))).verify(token))
+                        ApiException.class,
+                        () -> jwt(Clock.offset(CLOCK, Duration.ofHours(2))).verify(token))
                         .status());
     }
 

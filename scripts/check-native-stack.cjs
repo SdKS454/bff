@@ -1,5 +1,5 @@
 'use strict';
-// Creates test accounts/rides/documents on the running local stand; never calls Docker.
+
 const assert = require('node:assert/strict');
 const { randomUUID } = require('node:crypto');
 const base = process.env.BFF_BASE_URL || 'http://localhost:8080';

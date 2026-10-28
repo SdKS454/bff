@@ -1,9 +1,11 @@
 package ru.scooter.user.servlet;
 
-import jakarta.servlet.*;
-import jakarta.servlet.http.*;
-
-import ru.scooter.user.config.*;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import ru.scooter.user.config.AppComponents;
+import ru.scooter.user.config.AppContextListener;
 import ru.scooter.user.exception.ApiException;
 
 import java.io.IOException;

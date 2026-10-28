@@ -9,7 +9,8 @@ import java.util.Locale;
 import java.util.UUID;
 
 public final class Validation {
-    private Validation() {}
+    private Validation() {
+    }
 
     public static String login(String value) {
         if (value == null) throw bad("Укажите логин");

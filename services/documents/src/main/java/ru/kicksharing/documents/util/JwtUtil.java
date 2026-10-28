@@ -4,12 +4,15 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import ru.kicksharing.documents.config.AppConfig;
 import ru.kicksharing.documents.exception.ApiException;
+
 import java.security.PublicKey;
 import java.util.UUID;
 
 public final class JwtUtil {
     private static volatile PublicKey cachedKey;
-    private JwtUtil() {}
+
+    private JwtUtil() {
+    }
 
     private static PublicKey getKey() {
         if (cachedKey != null) return cachedKey;
@@ -35,7 +38,11 @@ public final class JwtUtil {
             if (value == null || !value.matches("[0-9a-fA-F-]{36}") || !value.equals(claims.getSubject()))
                 throw new IllegalArgumentException();
             return UUID.fromString(value);
-        } catch (IllegalStateException e) { java.util.logging.Logger.getLogger(JwtUtil.class.getName()).log(java.util.logging.Level.WARNING, "Documents JWT configuration failure", e); throw ApiException.serviceUnavailable(e.getMessage()); }
-        catch (Exception e) { throw new ApiException(401, "Недействительный JWT"); }
+        } catch (IllegalStateException e) {
+            java.util.logging.Logger.getLogger(JwtUtil.class.getName()).log(java.util.logging.Level.WARNING, "Documents JWT configuration failure", e);
+            throw ApiException.serviceUnavailable(e.getMessage());
+        } catch (Exception e) {
+            throw new ApiException(401, "Недействительный JWT");
+        }
     }
 }

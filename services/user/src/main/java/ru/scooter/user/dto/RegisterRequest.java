@@ -6,4 +6,5 @@ public record RegisterRequest(
         String fullName,
         String birthDate,
         String avatarUrl,
-        String role) {}
+        String role) {
+}

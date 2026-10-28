@@ -1,14 +1,18 @@
 package ru.scooter.user.servlet;
 
-import jakarta.servlet.http.*;
-
-import ru.scooter.user.dto.*;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import ru.scooter.user.dto.AuthPrincipal;
+import ru.scooter.user.dto.BanRequest;
 import ru.scooter.user.exception.ApiException;
 import ru.scooter.user.filter.AuthFilter;
-import ru.scooter.user.util.*;
+import ru.scooter.user.util.Json;
+import ru.scooter.user.util.Validation;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
 public final class UsersServlet extends BaseServlet {
     @Override

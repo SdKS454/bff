@@ -3,7 +3,10 @@ package bff.servlet;
 import bff.service.ServiceException;
 import bff.service.impl.JsonText;
 import bff.web.Tokens;
-import jakarta.servlet.http.*;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
 
 public abstract class BaseServlet extends HttpServlet {
@@ -12,6 +15,7 @@ public abstract class BaseServlet extends HttpServlet {
         if (token == null) writeError(resp, 401, "Требуется авторизация");
         return token;
     }
+
     protected void writeJson(HttpServletResponse resp, int status, String json) throws IOException {
         resp.setStatus(status);
         resp.setContentType("application/json");
@@ -19,9 +23,11 @@ public abstract class BaseServlet extends HttpServlet {
         resp.setHeader("Cache-Control", "no-store");
         if (json != null && !json.isEmpty()) resp.getWriter().write(json);
     }
+
     protected void writeError(HttpServletResponse resp, int status, String message) throws IOException {
         writeJson(resp, status, "{\"error\":" + JsonText.quote(message) + "}");
     }
+
     protected void writeServiceError(HttpServletResponse resp, ServiceException e) throws IOException {
         String body = e.getMessage() == null ? "Ошибка сервиса" : e.getMessage();
         try {

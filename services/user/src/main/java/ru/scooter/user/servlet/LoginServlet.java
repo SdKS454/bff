@@ -1,7 +1,7 @@
 package ru.scooter.user.servlet;
 
-import jakarta.servlet.http.*;
-
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import ru.scooter.user.dto.LoginRequest;
 import ru.scooter.user.util.Json;
 

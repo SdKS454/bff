@@ -1,18 +1,19 @@
 package ru.scooter.user.filter;
 
 import jakarta.servlet.*;
-import jakarta.servlet.http.*;
-
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import ru.scooter.user.config.AppContextListener;
 import ru.scooter.user.exception.ApiException;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Locale;
+import java.util.Set;
 
 public final class CorsFilter implements Filter {
-    private Set<String> allowedOrigins;
     private static final Set<String> METHODS = Set.of("GET", "POST", "OPTIONS");
     private static final Set<String> HEADERS = Set.of("authorization", "content-type", "accept");
+    private Set<String> allowedOrigins;
 
     @Override
     public void init(FilterConfig config) {
@@ -32,16 +33,15 @@ public final class CorsFilter implements Filter {
                         && origin != null
                         && req.getHeader("Access-Control-Request-Method") != null;
         if (origin != null) {
-            // Same-origin requests (including fetch(login)) require no CORS permission.
             String ownOrigin =
                     req.getScheme()
                             + "://"
                             + req.getServerName()
                             + ((req.getServerPort() == 80 && "http".equals(req.getScheme())
-                                            || req.getServerPort() == 443
-                                                    && "https".equals(req.getScheme()))
-                                    ? ""
-                                    : ":" + req.getServerPort());
+                            || req.getServerPort() == 443
+                            && "https".equals(req.getScheme()))
+                            ? ""
+                            : ":" + req.getServerPort());
             if (!allowedOrigins.contains(origin) && !ownOrigin.equals(origin))
                 throw new ApiException(403, "Origin не разрешён");
             resp.setHeader("Access-Control-Allow-Origin", origin);

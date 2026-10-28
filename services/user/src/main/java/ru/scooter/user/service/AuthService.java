@@ -2,11 +2,17 @@ package ru.scooter.user.service;
 
 import ru.scooter.user.client.ModerationClient;
 import ru.scooter.user.dto.*;
-import ru.scooter.user.entity.*;
+import ru.scooter.user.entity.Role;
+import ru.scooter.user.entity.Token;
+import ru.scooter.user.entity.User;
 import ru.scooter.user.exception.ApiException;
 import ru.scooter.user.exception.DuplicateLoginException;
-import ru.scooter.user.repository.*;
-import ru.scooter.user.util.*;
+import ru.scooter.user.repository.TokenRepository;
+import ru.scooter.user.repository.UserRepository;
+import ru.scooter.user.util.JwtUtil;
+import ru.scooter.user.util.PasswordHasher;
+import ru.scooter.user.util.TokenHash;
+import ru.scooter.user.util.Validation;
 
 import java.time.Clock;
 import java.util.UUID;
@@ -36,6 +42,10 @@ public final class AuthService {
         this.dummyHash = passwords.hash(UUID.randomUUID().toString());
     }
 
+    private static ApiException unauthorized() {
+        return new ApiException(401, "Неверные данные входа или недействительный токен");
+    }
+
     public UserResponse register(RegisterRequest request) {
         String login = Validation.login(request.login());
         String password = Validation.password(request.password(), true);
@@ -55,13 +65,11 @@ public final class AuthService {
                         clock.instant(),
                         false,
                         null);
-        // An arbitrary client-supplied role must never grant administrative privileges.
         try {
             users.insert(user);
         } catch (DuplicateLoginException e) {
             throw new ApiException(409, "Логин уже занят");
         }
-        // A fresh UUID cannot already have a moderation record; no JWT exists at registration yet.
         return UserResponse.from(user, false);
     }
 
@@ -109,9 +117,5 @@ public final class AuthService {
 
     public void logout(AuthPrincipal principal) {
         tokens.revoke(principal.tokenId());
-    }
-
-    private static ApiException unauthorized() {
-        return new ApiException(401, "Неверные данные входа или недействительный токен");
     }
 }

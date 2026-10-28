@@ -3,12 +3,17 @@ package bff.service.impl;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.ServletContextListener;
 import jakarta.servlet.annotation.WebListener;
+
 import java.net.http.HttpClient;
 import java.time.Duration;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** One connection pool per application, with workers stopped on undeploy (including Java 17). */
+
+
+
 @WebListener
 public final class HttpClients implements ServletContextListener {
     private static HttpClient client;
@@ -23,16 +28,19 @@ public final class HttpClients implements ServletContextListener {
                 worker.setContextClassLoader(ClassLoader.getPlatformClassLoader());
                 return worker;
             });
-            // HttpClient's JDK selector must not inherit the webapp class loader.
+
             Thread thread = Thread.currentThread();
             ClassLoader original = thread.getContextClassLoader();
             try {
                 thread.setContextClassLoader(ClassLoader.getPlatformClassLoader());
                 client = HttpClient.newBuilder().executor(executor).connectTimeout(Duration.ofSeconds(3)).build();
-            } finally { thread.setContextClassLoader(original); }
+            } finally {
+                thread.setContextClassLoader(original);
+            }
         }
         return client;
     }
+
     @Override
     public void contextDestroyed(ServletContextEvent event) {
         ExecutorService workers;
@@ -46,7 +54,9 @@ public final class HttpClients implements ServletContextListener {
             try {
                 if (!workers.awaitTermination(5, TimeUnit.SECONDS))
                     event.getServletContext().log("HTTP workers did not terminate within 5 seconds");
-            } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 }

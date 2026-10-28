@@ -3,11 +3,11 @@ package ru.kicksharing.documents.service;
 import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
-import ru.kicksharing.documents.config.ThymeleafConfig;
 import ru.kicksharing.documents.config.AppConfig;
-import java.io.File;
+import ru.kicksharing.documents.config.ThymeleafConfig;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
@@ -16,12 +16,9 @@ public class PdfService {
     private final TemplateEngine templateEngine = ThymeleafConfig.getTemplateEngine();
 
     public byte[] generatePdf(String templateName, Context context) {
-        // 1. Рендерим HTML
-        // Подкладываем CSS в контекст, чтобы вставить его в <style> внутри шаблона
         context.setVariable("inlineCss", loadCss());
         String html = templateEngine.process(templateName, context);
 
-        // 2. Конвертируем HTML -> PDF
         try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
             PdfRendererBuilder builder = new PdfRendererBuilder();
             builder.useFastMode();
@@ -33,7 +30,7 @@ public class PdfService {
                     .canDisplayUpTo("Документ поездки блокировка") != -1)
                 throw new IllegalStateException("A readable Cyrillic TTF font is required");
             builder.useFont(font, "DocumentFont");
-            builder.withHtmlContent(html, null); // base URL null, т.к. всё инлайн
+            builder.withHtmlContent(html, null);
             builder.toStream(os);
             builder.run();
             return os.toByteArray();

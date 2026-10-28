@@ -1,12 +1,7 @@
 package ru.itis.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.Filter;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.FilterConfig;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
+import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -15,12 +10,11 @@ import ru.itis.exception.ApiException;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.UUID;
 
 @WebFilter("/*")
 public class AuthFilter implements Filter {
-    private UserClient userClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private UserClient userClient;
 
     @Override
     public void init(FilterConfig config) {
@@ -42,10 +36,11 @@ public class AuthFilter implements Filter {
         try {
             String publicPath = req.getRequestURI().substring(req.getContextPath().length());
             if (req.getMethod().equals("GET") && publicPath.equals("/api/reviews")) {
-                chain.doFilter(req, resp); return;
+                chain.doFilter(req, resp);
+                return;
             }
             String authorization = req.getHeader("Authorization");
-            if (authorization == null || !authorization.regionMatches(true,0,"Bearer ",0,7)) {
+            if (authorization == null || !authorization.regionMatches(true, 0, "Bearer ", 0, 7)) {
                 throw new ApiException(401, "Нужен Bearer JWT");
             }
             String token = authorization.substring(7);
@@ -54,10 +49,10 @@ public class AuthFilter implements Filter {
             }
             var userId = userClient.identity(token);
             req.setAttribute("userId", userId);
-            String path=req.getRequestURI().substring(req.getContextPath().length());
-            if(req.getMethod().equals("POST") && (path.equals("/api/rides")||path.equals("/api/rides/"))) {
-                var user=userClient.current(token);
-                req.setAttribute("blocked",user.isBlocked());
+            String path = req.getRequestURI().substring(req.getContextPath().length());
+            if (req.getMethod().equals("POST") && (path.equals("/api/rides") || path.equals("/api/rides/"))) {
+                var user = userClient.current(token);
+                req.setAttribute("blocked", user.isBlocked());
             }
             chain.doFilter(req, resp);
         } catch (ApiException e) {

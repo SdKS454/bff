@@ -1,15 +1,17 @@
 package ru.scooter.user.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
-
 import ru.scooter.user.exception.ApiException;
 import ru.scooter.user.util.Json;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.http.*;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.*;
+import java.util.Map;
+import java.util.UUID;
 
 public final class HttpModerationClient implements ModerationClient {
     private final URI baseUrl;
@@ -29,8 +31,8 @@ public final class HttpModerationClient implements ModerationClient {
     @Override
     public boolean isBlocked(UUID userId, String token) {
         return status(
-                        send("GET", "/api/moderation/users/" + userId + "/status", null, token),
-                        userId)
+                send("GET", "/api/moderation/users/" + userId + "/status", null, token),
+                userId)
                 .get("blocked")
                 .booleanValue();
     }
@@ -108,7 +110,6 @@ public final class HttpModerationClient implements ModerationClient {
                         if (error != null && error.path("error").isTextual())
                             message = error.get("error").textValue();
                     } catch (IOException ignored) {
-                        /* Preserve HTTP error without trusting a non-JSON error page. */
                     }
                     throw new ApiException(code, message);
                 }

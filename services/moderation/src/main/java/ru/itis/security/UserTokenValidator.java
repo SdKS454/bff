@@ -1,6 +1,7 @@
 package ru.itis.security;
 
 import ru.itis.exception.ApiException;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -8,7 +9,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 
-/** Never use /me here: User /me calls Moderation and would recurse. */
+
+
+
 public final class UserTokenValidator {
     private static final HttpClient CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(2))
@@ -36,7 +39,7 @@ public final class UserTokenValidator {
             int status = CLIENT.send(request, HttpResponse.BodyHandlers.discarding()).statusCode();
             if (status == 204) return;
             if (status == 401) throw new ApiException(401, "Требуется авторизация");
-            // An unexpected response is never permission to act as ADMIN.
+
             throw new ApiException(503, "Сервис авторизации временно недоступен");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

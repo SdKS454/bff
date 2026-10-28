@@ -2,26 +2,26 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Админка блокировок</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link href="css/style.css" rel="stylesheet">
 </head>
 <body>
 <header class="topbar">
     <h1 class="topbar__title">Админка блокировок</h1>
-    <a id="scooters-link" class="btn btn--ghost" hidden>Управление самокатами</a>
-    <button type="button" id="logout-btn" class="btn btn--ghost">Выйти</button>
+    <a class="btn btn--ghost" hidden id="scooters-link">Управление самокатами</a>
+    <button class="btn btn--ghost" id="logout-btn" type="button">Выйти</button>
 </header>
 <main class="page">
-    <div id="message" class="message" role="alert" hidden></div>
-    <section id="content" hidden>
+    <div class="message" hidden id="message" role="alert"></div>
+    <section hidden id="content">
         <div class="toolbar">
-            <div class="filters" role="group" aria-label="Фильтр пользователей">
-                <button type="button" class="btn btn--filter is-active" data-filter="all">Все</button>
-                <button type="button" class="btn btn--filter" data-filter="active">Активные</button>
-                <button type="button" class="btn btn--filter" data-filter="blocked">Заблокированные</button>
+            <div aria-label="Фильтр пользователей" class="filters" role="group">
+                <button class="btn btn--filter is-active" data-filter="all" type="button">Все</button>
+                <button class="btn btn--filter" data-filter="active" type="button">Активные</button>
+                <button class="btn btn--filter" data-filter="blocked" type="button">Заблокированные</button>
             </div>
-            <button type="button" id="refresh-btn" class="btn btn--ghost">Обновить</button>
+            <button class="btn btn--ghost" id="refresh-btn" type="button">Обновить</button>
         </div>
         <div class="table-wrap">
             <table class="users-table">
@@ -37,40 +37,42 @@
                 </tr>
                 </thead>
                 <tbody id="users-tbody">
-                <tr class="table-state"><td colspan="7">Загрузка…</td></tr>
+                <tr class="table-state">
+                    <td colspan="7">Загрузка…</td>
+                </tr>
                 </tbody>
             </table>
         </div>
     </section>
 </main>
-<div id="ban-modal" class="modal" hidden>
+<div class="modal" hidden id="ban-modal">
     <div class="modal__overlay" data-close="true"></div>
-    <div class="modal__dialog" role="dialog" aria-modal="true">
+    <div aria-modal="true" class="modal__dialog" role="dialog">
         <h2 class="modal__title">Блокировка пользователя</h2>
         <p class="modal__user" id="ban-modal-user"></p>
         <label class="field">
             <span class="field__label">Причина блокировки</span>
-            <select id="ban-reason" class="field__control">
-                <option value="" selected disabled>Выберите причину</option>
+            <select class="field__control" id="ban-reason">
+                <option disabled selected value="">Выберите причину</option>
             </select>
         </label>
         <p class="modal__duration" id="ban-duration"></p>
-        <div id="ban-error" class="message message--inline message--error" hidden></div>
+        <div class="message message--inline message--error" hidden id="ban-error"></div>
         <div class="modal__actions">
-            <button type="button" id="ban-cancel" class="btn btn--ghost">Отмена</button>
-            <button type="button" id="ban-confirm" class="btn btn--danger" disabled>Заблокировать</button>
+            <button class="btn btn--ghost" id="ban-cancel" type="button">Отмена</button>
+            <button class="btn btn--danger" disabled id="ban-confirm" type="button">Заблокировать</button>
         </div>
     </div>
 </div>
-<div id="unban-modal" class="modal" hidden>
+<div class="modal" hidden id="unban-modal">
     <div class="modal__overlay" data-close="true"></div>
-    <div class="modal__dialog" role="dialog" aria-modal="true">
+    <div aria-modal="true" class="modal__dialog" role="dialog">
         <h2 class="modal__title">Разблокировка</h2>
         <p class="modal__user" id="unban-modal-text"></p>
-        <div id="unban-error" class="message message--inline message--error" hidden></div>
+        <div class="message message--inline message--error" hidden id="unban-error"></div>
         <div class="modal__actions">
-            <button type="button" id="unban-cancel" class="btn btn--ghost">Отмена</button>
-            <button type="button" id="unban-confirm" class="btn btn--primary">Да</button>
+            <button class="btn btn--ghost" id="unban-cancel" type="button">Отмена</button>
+            <button class="btn btn--primary" id="unban-confirm" type="button">Да</button>
         </div>
     </div>
 </div>

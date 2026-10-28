@@ -1,516 +1,547 @@
-/* Оформление входа, регистрации и кабинета. Базовые правила без медиазапросов. */
+
 .account-dialog {
-  width: 920px;
-  max-width: calc(100vw - 36px);
-  padding: 0;
-  background: #f6f6f6;
+    width: 920px;
+    max-width: calc(100vw - 36px);
+    padding: 0;
+    background: #f6f6f6;
 }
 
 .account-shell {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  min-height: 560px;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: 560px;
 }
 
 .account-aside {
-  display: flex;
-  flex-direction: column;
-  padding: 40px 27px;
-  background: #242424;
-  color: white;
+    display: flex;
+    flex-direction: column;
+    padding: 40px 27px;
+    background: #242424;
+    color: white;
 }
 
 .account-aside .brand {
-  margin-bottom: 40px;
-  font-size: 29px;
+    margin-bottom: 40px;
+    font-size: 29px;
 }
 
 .account-aside h2 {
-  margin: 25px 0 23px;
-  font-size: 31px;
-  font-weight: 500;
-  letter-spacing: -1.3px;
-  line-height: 1.2;
+    margin: 25px 0 23px;
+    font-size: 31px;
+    font-weight: 500;
+    letter-spacing: -1.3px;
+    line-height: 1.2;
 }
 
 .account-aside > p {
-  margin: 0;
-  color: #aaa;
-  font-size: 12px;
-  line-height: 1.8;
+    margin: 0;
+    color: #aaa;
+    font-size: 12px;
+    line-height: 1.8;
 }
 
 .account-decor {
-  width: 90px;
-  height: 3px;
-  margin-top: 28px;
-  border-radius: 4px;
-  background: #555;
+    width: 90px;
+    height: 3px;
+    margin-top: 28px;
+    border-radius: 4px;
+    background: #555;
 }
 
 .account-decor::before {
-  display: block;
-  width: 58px;
-  height: 3px;
-  background: var(--orange);
-  content: '';
+    display: block;
+    width: 58px;
+    height: 3px;
+    background: var(--orange);
+    content: '';
 }
 
 .account-avatar {
-  display: grid;
-  place-items: center;
-  width: 53px;
-  height: 53px;
-  margin: 10px 0 20px;
-  border-radius: 16px;
-  background: var(--orange);
-  color: white;
-  font-size: 23px;
+    display: grid;
+    place-items: center;
+    width: 53px;
+    height: 53px;
+    margin: 10px 0 20px;
+    border-radius: 16px;
+    background: var(--orange);
+    color: white;
+    font-size: 23px;
 }
 
 .account-aside h3 {
-  margin: 0 0 7px;
-  font-size: 17px;
-  font-weight: 500;
-  overflow-wrap: anywhere;
+    margin: 0 0 7px;
+    font-size: 17px;
+    font-weight: 500;
+    overflow-wrap: anywhere;
 }
 
 .account-aside .account-login {
-  font-size: 11px;
-  overflow-wrap: anywhere;
+    font-size: 11px;
+    overflow-wrap: anywhere;
 }
 
 .account-nav {
-  display: grid;
-  gap: 8px;
-  margin-top: 27px;
+    display: grid;
+    gap: 8px;
+    margin-top: 27px;
 }
 
 .account-nav button {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 13px 14px;
-  border-radius: 11px;
-  background: transparent;
-  color: #aaa;
-  font-size: 13px;
-  text-align: left;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 13px 14px;
+    border-radius: 11px;
+    background: transparent;
+    color: #aaa;
+    font-size: 13px;
+    text-align: left;
 }
 
 .account-nav button.selected {
-  background: #ffffff14;
-  color: white;
+    background: #ffffff14;
+    color: white;
 }
 
 .account-content {
-  min-width: 0;
-  padding: 46px 38px 35px;
+    min-width: 0;
+    padding: 46px 38px 35px;
 }
 
 .account-content h2 {
-  margin: 0 0 12px;
-  font-size: 29px;
-  font-weight: 500;
-  letter-spacing: -1.3px;
-  line-height: 1.2;
+    margin: 0 0 12px;
+    font-size: 29px;
+    font-weight: 500;
+    letter-spacing: -1.3px;
+    line-height: 1.2;
 }
 
 .account-subtitle {
-  margin: 0 0 25px;
-  color: #777;
-  font-size: 12px;
-  line-height: 1.7;
+    margin: 0 0 25px;
+    color: #777;
+    font-size: 12px;
+    line-height: 1.7;
 }
 
 .account-tabs {
-  display: flex;
-  gap: 4px;
-  margin-bottom: 27px;
-  padding: 4px;
-  border-radius: 12px;
-  background: #e7e7e7;
+    display: flex;
+    gap: 4px;
+    margin-bottom: 27px;
+    padding: 4px;
+    border-radius: 12px;
+    background: #e7e7e7;
 }
 
 .account-tabs button {
-  flex: 1;
-  padding: 11px 13px;
-  border-radius: 9px;
-  background: transparent;
-  color: #777;
-  font-size: 13px;
+    flex: 1;
+    padding: 11px 13px;
+    border-radius: 9px;
+    background: transparent;
+    color: #777;
+    font-size: 13px;
 }
 
 .account-tabs button.selected {
-  background: white;
-  color: #222;
+    background: white;
+    color: #222;
 }
 
 .account-form {
-  display: grid;
-  gap: 15px;
+    display: grid;
+    gap: 15px;
 }
 
 .account-form label {
-  display: block;
-  color: #555;
-  font-size: 11px;
+    display: block;
+    color: #555;
+    font-size: 11px;
 }
 
 .account-form input,
 .account-form textarea,
 .account-form select {
-  display: block;
-  width: 100%;
-  min-height: 46px;
-  margin-top: 7px;
-  padding: 12px 14px;
-  border: 1px solid transparent;
-  border-radius: 11px;
-  outline: none;
-  background: #e9e9e9;
-  color: #242424;
-  font-size: 13px;
+    display: block;
+    width: 100%;
+    min-height: 46px;
+    margin-top: 7px;
+    padding: 12px 14px;
+    border: 1px solid transparent;
+    border-radius: 11px;
+    outline: none;
+    background: #e9e9e9;
+    color: #242424;
+    font-size: 13px;
 }
 
 .account-form input:focus,
 .account-form textarea:focus,
 .account-form select:focus {
-  border-color: var(--orange);
-  background: white;
+    border-color: var(--orange);
+    background: white;
 }
 
 .account-form input:read-only {
-  color: #888;
+    color: #888;
 }
 
 .password-field {
-  position: relative;
+    position: relative;
 }
 
 .password-field input {
-  padding-right: 88px;
+    padding-right: 88px;
 }
 
 .password-field button {
-  position: absolute;
-  right: 7px;
-  bottom: 7px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: #dcdcdc;
-  color: #555;
-  font-size: 10px;
+    position: absolute;
+    right: 7px;
+    bottom: 7px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #dcdcdc;
+    color: #555;
+    font-size: 10px;
 }
 
 .account-submit {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 15px;
-  width: 100%;
-  min-height: 49px;
-  margin-top: 5px;
-  padding: 13px 16px;
-  border-radius: 12px;
-  background: var(--orange);
-  color: white;
-  font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    width: 100%;
+    min-height: 49px;
+    margin-top: 5px;
+    padding: 13px 16px;
+    border-radius: 12px;
+    background: var(--orange);
+    color: white;
+    font-size: 13px;
 }
 
 .account-submit b {
-  font-size: 23px;
-  font-weight: 400;
+    font-size: 23px;
+    font-weight: 400;
 }
 
 .account-form .form-error {
-  margin: 0;
-  padding: 11px 13px;
-  border-radius: 9px;
-  background: #ffede3;
-  color: #9b3400;
-  font-size: 11px;
-  line-height: 1.6;
+    margin: 0;
+    padding: 11px 13px;
+    border-radius: 9px;
+    background: #ffede3;
+    color: #9b3400;
+    font-size: 11px;
+    line-height: 1.6;
 }
 
 .auth-switch {
-  margin-top: 20px;
-  color: #888;
-  font-size: 11px;
-  text-align: center;
+    margin-top: 20px;
+    color: #888;
+    font-size: 11px;
+    text-align: center;
 }
 
 .auth-switch button {
-  padding: 4px;
-  background: none;
-  color: var(--orange);
-  font-size: 11px;
+    padding: 4px;
+    background: none;
+    color: var(--orange);
+    font-size: 11px;
 }
 
 .account-topline {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
 }
 
 .account-topline h2 {
-  margin-bottom: 0;
+    margin-bottom: 0;
 }
 
 .account-logout {
-  padding: 9px 12px;
-  border-radius: 9px;
-  background: #e5e5e5;
-  color: #555;
-  font-size: 11px;
-  white-space: nowrap;
+    padding: 9px 12px;
+    border-radius: 9px;
+    background: #e5e5e5;
+    color: #555;
+    font-size: 11px;
+    white-space: nowrap;
 }
 
 .account-empty {
-  padding: 28px;
-  border-radius: 18px;
-  background: #e9e9e9;
-  text-align: center;
+    padding: 28px;
+    border-radius: 18px;
+    background: #e9e9e9;
+    text-align: center;
 }
 
 .account-empty svg {
-  width: 38px;
-  height: 38px;
-  margin-bottom: 12px;
-  color: var(--orange);
+    width: 38px;
+    height: 38px;
+    margin-bottom: 12px;
+    color: var(--orange);
 }
 
 .account-empty h3 {
-  margin: 0 0 10px;
-  font-size: 18px;
-  font-weight: 500;
+    margin: 0 0 10px;
+    font-size: 18px;
+    font-weight: 500;
 }
 
 .account-empty p {
-  margin: 0 0 22px;
-  color: #777;
-  font-size: 12px;
-  line-height: 1.6;
+    margin: 0 0 22px;
+    color: #777;
+    font-size: 12px;
+    line-height: 1.6;
 }
 
 .account-empty button {
-  padding: 12px 16px;
-  border-radius: 10px;
-  background: var(--orange);
-  color: white;
-  font-size: 12px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: var(--orange);
+    color: white;
+    font-size: 12px;
 }
 
 .ride-list, .saved-list {
-  display: grid;
-  gap: 15px;
+    display: grid;
+    gap: 15px;
 }
 
 .ride-item {
-  padding: 18px;
-  border-radius: 17px;
-  background: #e8e8e8;
+    padding: 18px;
+    border-radius: 17px;
+    background: #e8e8e8;
 }
 
 .ride-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
 }
 
 .ride-top .license-plate {
-  margin: 0;
-  font-size: 17px;
+    margin: 0;
+    font-size: 17px;
 }
 
 .ride-status {
-  padding: 6px 8px;
-  border-radius: 20px;
-  background: #d7e2d9;
-  color: #4e7158;
-  font-size: 9px;
-  white-space: nowrap;
+    padding: 6px 8px;
+    border-radius: 20px;
+    background: #d7e2d9;
+    color: #4e7158;
+    font-size: 9px;
+    white-space: nowrap;
 }
 
 .ride-status.finished {
-  background: #ffdcc5;
-  color: #9c460c;
+    background: #ffdcc5;
+    color: #9c460c;
 }
 
 .ride-date {
-  margin: 14px 0;
-  color: #777;
-  font-size: 10px;
-  line-height: 1.6;
+    margin: 14px 0;
+    color: #777;
+    font-size: 10px;
+    line-height: 1.6;
 }
 
 .ride-metrics {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-  padding: 15px;
-  border-radius: 12px;
-  background: #ffffff70;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    padding: 15px;
+    border-radius: 12px;
+    background: #ffffff70;
 }
 
 .ride-metrics small {
-  display: block;
-  margin-bottom: 7px;
-  color: #888;
-  font-size: 10px;
+    display: block;
+    margin-bottom: 7px;
+    color: #888;
+    font-size: 10px;
 }
 
 .ride-metrics b {
-  font-size: 16px;
-  font-weight: 500;
+    font-size: 16px;
+    font-weight: 500;
 }
 
 .ride-location {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin: 16px 0;
-  color: #666;
-  font-size: 10px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin: 16px 0;
+    color: #666;
+    font-size: 10px;
 }
 
 .ride-location svg {
-  width: 18px;
-  height: 18px;
+    width: 18px;
+    height: 18px;
 }
 
 .ride-button {
-  width: 100%;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: white;
-  color: #333;
-  font-size: 11px;
-  text-align: left;
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: white;
+    color: #333;
+    font-size: 11px;
+    text-align: left;
 }
 
 .payment-complete {
-  color: #64806b;
-  font-size: 10px;
+    color: #64806b;
+    font-size: 10px;
 }
 
 .saved-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 14px;
-  border-radius: 16px;
-  background: #e8e8e8;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px;
+    border-radius: 16px;
+    background: #e8e8e8;
 }
 
 .saved-row .product-picture {
-  flex-shrink: 0;
-  width: 75px;
+    flex-shrink: 0;
+    width: 75px;
 }
 
 .saved-row .license-plate {
-  margin-bottom: 3px;
-  font-size: 15px;
+    margin-bottom: 3px;
+    font-size: 15px;
 }
 
 .saved-row p {
-  color: #777;
-  font-size: 10px;
+    color: #777;
+    font-size: 10px;
 }
 
 .saved-row button {
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: white;
-  color: #555;
-  font-size: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: white;
+    color: #555;
+    font-size: 10px;
 }
 
 .saved-row button:first-of-type {
-  background: var(--orange);
-  color: white;
+    background: var(--orange);
+    color: white;
 }
 
 .back-button {
-  margin-bottom: 25px;
-  padding: 0;
-  background: none;
-  color: #888;
-  font-size: 11px;
+    margin-bottom: 25px;
+    padding: 0;
+    background: none;
+    color: #888;
+    font-size: 11px;
 }
 
 .start-summary {
-  margin: 22px 0;
-  padding: 20px;
-  border-radius: 17px;
-  background: #e8e8e8;
+    margin: 22px 0;
+    padding: 20px;
+    border-radius: 17px;
+    background: #e8e8e8;
 }
 
 .start-summary .license-plate {
-  margin-bottom: 8px;
+    margin-bottom: 8px;
 }
 
 .start-summary p {
-  margin: 0 0 23px;
-  color: #777;
-  font-size: 12px;
+    margin: 0 0 23px;
+    color: #777;
+    font-size: 12px;
 }
 
 .start-summary > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 15px;
-  margin-top: 14px;
-  font-size: 11px;
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    margin-top: 14px;
+    font-size: 11px;
 }
 
 .start-summary span {
-  color: #777;
+    color: #777;
 }
 
 .start-summary b {
-  font-weight: 500;
+    font-weight: 500;
 }
 
 .booking-notice {
-  margin: 0 0 17px;
-  padding: 14px;
-  border-radius: 11px;
-  background: #e9e9e9;
-  color: #777;
-  font-size: 11px;
-  line-height: 1.8;
+    margin: 0 0 17px;
+    padding: 14px;
+    border-radius: 11px;
+    background: #e9e9e9;
+    color: #777;
+    font-size: 11px;
+    line-height: 1.8;
 }
 
 .payment-total {
-  margin: 26px 0;
-  padding: 25px;
-  border-radius: 18px;
-  background: #e8e8e8;
+    margin: 26px 0;
+    padding: 25px;
+    border-radius: 18px;
+    background: #e8e8e8;
 }
 
 .payment-total small {
-  display: block;
-  margin-bottom: 12px;
-  color: #777;
-  font-size: 12px;
+    display: block;
+    margin-bottom: 12px;
+    color: #777;
+    font-size: 12px;
 }
 
 .payment-total strong {
-  font-size: 36px;
-  font-weight: 500;
+    font-size: 36px;
+    font-weight: 500;
 }
 
-/* Live BFF integration: explicit errors and server-owned profile data. */
-.profile-data dt { margin-top: 1rem; color: #666; }
-.profile-data dd { margin: .4rem 0; overflow-wrap: anywhere; }
-.catalog-tools { display: flex; gap: 1rem; padding: 1rem 0; }
-.catalog-tools button { border: 1px solid #ccc; border-radius: .4rem; padding: .75rem 1rem; cursor: pointer; }
-#catalog-message { padding: .75rem 0; color: #555; }
-[hidden] { display: none !important; }
-.form-error, .profile-data dd, .license-plate { overflow-wrap: anywhere; }
 
-.account-form textarea { resize: vertical; min-height: 90px; }
+.profile-data dt {
+    margin-top: 1rem;
+    color: #666;
+}
+
+.profile-data dd {
+    margin: .4rem 0;
+    overflow-wrap: anywhere;
+}
+
+.catalog-tools {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem 0;
+}
+
+.catalog-tools button {
+    border: 1px solid #ccc;
+    border-radius: .4rem;
+    padding: .75rem 1rem;
+    cursor: pointer;
+}
+
+#catalog-message {
+    padding: .75rem 0;
+    color: #555;
+}
+
+[hidden] {
+    display: none !important;
+}
+
+.form-error, .profile-data dd, .license-plate {
+    overflow-wrap: anywhere;
+}
+
+.account-form textarea {
+    resize: vertical;
+    min-height: 90px;
+}

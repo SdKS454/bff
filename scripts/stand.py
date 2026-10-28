@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local six-Tomcat stand. Python 3 stdlib; no IDE or Docker. Run from any directory."""
+
 import argparse
 from contextlib import contextmanager
 import getpass

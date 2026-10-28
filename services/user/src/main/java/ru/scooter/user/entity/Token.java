@@ -9,4 +9,5 @@ public record Token(
         String tokenHash,
         Instant createdAt,
         Instant expiresAt,
-        boolean valid) {}
+        boolean valid) {
+}

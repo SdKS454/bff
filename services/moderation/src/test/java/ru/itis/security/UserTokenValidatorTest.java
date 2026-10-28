@@ -5,8 +5,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import ru.itis.exception.ApiException;
+
 import java.net.InetSocketAddress;
 import java.util.concurrent.atomic.AtomicReference;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class UserTokenValidatorTest {
@@ -28,12 +30,16 @@ class UserTokenValidatorTest {
             else assertEquals(upstream == 401 ? 401 : 503,
                     assertThrows(ApiException.class, () -> validator.validate("original.jwt.token")).getStatus());
             assertEquals("Bearer original.jwt.token", header.get());
-        } finally { server.stop(0); }
+        } finally {
+            server.stop(0);
+        }
     }
 
-    @Test void networkFailureDoesNotAuthorize() throws Exception {
+    @Test
+    void networkFailureDoesNotAuthorize() throws Exception {
         var server = new java.net.ServerSocket(0, 1, java.net.InetAddress.getLoopbackAddress());
-        int port = server.getLocalPort(); server.close();
+        int port = server.getLocalPort();
+        server.close();
         var validator = new UserTokenValidator("http://127.0.0.1:" + port);
         assertEquals(503, assertThrows(ApiException.class, () -> validator.validate("token")).getStatus());
     }

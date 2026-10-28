@@ -8,17 +8,18 @@ import java.security.PublicKey;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 
-/** Reads only local configuration. Never downloads keys from a request or token. */
 public final class JwtPublicKeyLoader {
-    private JwtPublicKeyLoader() { }
+    private JwtPublicKeyLoader() {
+    }
 
     public static PublicKey load(String inline, String configuredPath) {
         String pem = inline;
         if (configuredPath != null && !configuredPath.isBlank()) {
             String path = configuredPath.trim();
             if (path.startsWith("~/")) path = System.getProperty("user.home") + path.substring(1);
-            try { pem = Files.readString(Path.of(path), StandardCharsets.UTF_8); }
-            catch (Exception e) {
+            try {
+                pem = Files.readString(Path.of(path), StandardCharsets.UTF_8);
+            } catch (Exception e) {
                 throw new IllegalStateException("Documents не может прочитать JWT_PUBLIC_KEY_PATH: проверьте путь и права процесса Tomcat", e);
             }
         }

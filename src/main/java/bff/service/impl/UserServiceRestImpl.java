@@ -8,7 +8,6 @@ import bff.service.ServiceException;
 import bff.service.UserService;
 
 import java.io.IOException;
-import java.util.UUID;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -16,6 +15,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.UUID;
 
 public class UserServiceRestImpl implements UserService {
 
@@ -55,8 +55,11 @@ public class UserServiceRestImpl implements UserService {
             throw failure(response);
         }
         UserDto user;
-        try { user = parseUser(response.body()); }
-        catch (RuntimeException e) { throw new ServiceException(502, "Неожиданный формат ответа пользователя", e); }
+        try {
+            user = parseUser(response.body());
+        } catch (RuntimeException e) {
+            throw new ServiceException(502, "Неожиданный формат ответа пользователя", e);
+        }
         if (user.id() == null) {
             throw new ServiceException(502, "Неожиданный формат ответа пользователя");
         }
@@ -113,7 +116,8 @@ public class UserServiceRestImpl implements UserService {
                 throw new ServiceException(502, "Некорректное время жизни токена");
             String userJson = JsonText.raw(json, "user");
             UserDto user = userJson == null || "null".equals(userJson) ? null : parseUser(userJson);
-            if (user == null || user.id() == null) throw new ServiceException(502, "Нет UUID пользователя в ответе авторизации");
+            if (user == null || user.id() == null)
+                throw new ServiceException(502, "Нет UUID пользователя в ответе авторизации");
             if (user.deleted()) throw new ServiceException(403, "Пользователь удалён");
             return new AuthResponse(token, expires, user);
         } catch (ServiceException e) {

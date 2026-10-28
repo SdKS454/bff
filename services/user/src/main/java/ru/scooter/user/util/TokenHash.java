@@ -6,7 +6,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
 public final class TokenHash {
-    private TokenHash() {}
+    private TokenHash() {
+    }
 
     public static String sha256(String token) {
         try {

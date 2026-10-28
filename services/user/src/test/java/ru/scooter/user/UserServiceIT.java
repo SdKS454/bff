@@ -1,25 +1,30 @@
 package ru.scooter.user;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.sun.net.httpserver.HttpServer;
-
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-
 import ru.scooter.user.cli.GenerateKeys;
 import ru.scooter.user.util.Json;
 
-import java.io.*;
-import java.net.*;
-import java.net.http.*;
-import java.nio.file.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.*;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 @EnabledIfEnvironmentVariable(named = "TEST_DB_URL", matches = ".+")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -44,7 +49,7 @@ class UserServiceIT {
         Class.forName("org.postgresql.Driver");
         schema = "user_it_" + UUID.randomUUID().toString().replace("-", "");
         try (Connection c = connection();
-                Statement s = c.createStatement()) {
+             Statement s = c.createStatement()) {
             s.execute("CREATE SCHEMA " + schema);
             s.execute("SET search_path TO " + schema);
             s.execute(Files.readString(Path.of("db/001_schema.sql")));
@@ -78,11 +83,11 @@ class UserServiceIT {
                                 code == 400
                                         ? "{\"error\":\"Неизвестная причина\"}"
                                         : Json.MAPPER.writeValueAsString(
-                                                Map.of(
-                                                        "userId",
-                                                        id,
-                                                        "blocked",
-                                                        blocked.contains(id)));
+                                        Map.of(
+                                                "userId",
+                                                id,
+                                                "blocked",
+                                                blocked.contains(id)));
                     }
                     byte[] bytes = body.getBytes(java.nio.charset.StandardCharsets.UTF_8);
                     exchange.getResponseHeaders().set("Content-Type", "application/json");
@@ -93,7 +98,7 @@ class UserServiceIT {
                 });
         moderation.start();
         secrets = Files.createTempDirectory("user-it-keys-");
-        GenerateKeys.main(new String[] {secrets.toString()});
+        GenerateKeys.main(new String[]{secrets.toString()});
         ProcessBuilder process =
                 new ProcessBuilder(
                         Path.of(System.getProperty("java.home"), "bin", "java").toString(),
@@ -156,7 +161,7 @@ class UserServiceIT {
         if (moderation != null) moderation.stop(0);
         if (schema != null)
             try (Connection c = connection();
-                    Statement s = c.createStatement()) {
+                 Statement s = c.createStatement()) {
                 s.execute("DROP SCHEMA IF EXISTS " + schema + " CASCADE");
             }
         if (secrets != null)
@@ -176,11 +181,11 @@ class UserServiceIT {
         assertEquals(
                 401,
                 request(
-                                "POST",
-                                "/api/users/login",
-                                Map.of("login", "normal_user", "password", "wrong-pass"),
-                                null,
-                                null)
+                        "POST",
+                        "/api/users/login",
+                        Map.of("login", "normal_user", "password", "wrong-pass"),
+                        null,
+                        null)
                         .statusCode());
         assertTrue(
                 json(request("GET", "/api/users/exists?login=NORMAL_USER", null, null, null))
@@ -226,20 +231,20 @@ class UserServiceIT {
         assertEquals(
                 403,
                 request(
-                                "POST",
-                                "/api/users/" + userId + "/ban",
-                                Map.of("reason", "RIDE_DANGEROUS"),
-                                userToken,
-                                null)
+                        "POST",
+                        "/api/users/" + userId + "/ban",
+                        Map.of("reason", "RIDE_DANGEROUS"),
+                        userToken,
+                        null)
                         .statusCode());
         assertEquals(
                 200,
                 request(
-                                "POST",
-                                "/api/users/" + userId + "/ban",
-                                Map.of("reason", "RIDE_DANGEROUS"),
-                                adminToken,
-                                null)
+                        "POST",
+                        "/api/users/" + userId + "/ban",
+                        Map.of("reason", "RIDE_DANGEROUS"),
+                        adminToken,
+                        null)
                         .statusCode());
         assertEquals("Bearer " + adminToken, forwardedAuth.get());
         assertTrue(
@@ -301,11 +306,11 @@ class UserServiceIT {
         assertEquals(
                 204,
                 request(
-                                "GET",
-                                "/api/users/validate",
-                                null,
-                                result.path("accessToken").asText(),
-                                null)
+                        "GET",
+                        "/api/users/validate",
+                        null,
+                        result.path("accessToken").asText(),
+                        null)
                         .statusCode());
         assertEquals(404, request("GET", "/login.html", null, null, null).statusCode());
         assertEquals(404, request("GET", "/login.js", null, null, null).statusCode());
@@ -320,16 +325,16 @@ class UserServiceIT {
         String[] parts = userToken.split("\\.");
         String payload =
                 new String(
-                                Base64.getUrlDecoder().decode(parts[1]),
-                                java.nio.charset.StandardCharsets.UTF_8)
+                        Base64.getUrlDecoder().decode(parts[1]),
+                        java.nio.charset.StandardCharsets.UTF_8)
                         .replace("USER", "ADMIN");
         String forged =
                 parts[0]
                         + "."
                         + Base64.getUrlEncoder()
-                                .withoutPadding()
-                                .encodeToString(
-                                        payload.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                        .withoutPadding()
+                        .encodeToString(
+                                payload.getBytes(java.nio.charset.StandardCharsets.UTF_8))
                         + "."
                         + parts[2];
         assertEquals(401, request("GET", "/api/users", null, forged, null).statusCode());
@@ -347,7 +352,7 @@ class UserServiceIT {
                         + " login='role_test'");
         assertEquals(401, request("GET", "/api/users/validate", null, token, null).statusCode());
         assertEquals(401, login("role_test").statusCode());
-        // Keep the minimal list fixture stable regardless of test execution order.
+
     }
 
     @Test
@@ -402,21 +407,21 @@ class UserServiceIT {
         String value = json(login("normal_user")).path("accessToken").asText();
         String hash = ru.scooter.user.util.TokenHash.sha256(value);
         try (Connection c = connection();
-                Statement statement = c.createStatement()) {
+             Statement statement = c.createStatement()) {
             statement.execute("SET search_path TO " + schema);
             try (ResultSet rs =
-                    statement.executeQuery(
-                            "SELECT table_name FROM information_schema.tables WHERE table_schema='"
-                                    + schema
-                                    + "' AND table_type='BASE TABLE'")) {
+                         statement.executeQuery(
+                                 "SELECT table_name FROM information_schema.tables WHERE table_schema='"
+                                         + schema
+                                         + "' AND table_type='BASE TABLE'")) {
                 Set<String> tables = new HashSet<>();
                 while (rs.next()) tables.add(rs.getString(1));
                 assertEquals(Set.of("users", "tokens"), tables);
             }
             try (PreparedStatement select =
-                    c.prepareStatement(
-                            "SELECT user_id,token_hash,expire_at,is_valid FROM tokens WHERE"
-                                    + " token_hash=?")) {
+                         c.prepareStatement(
+                                 "SELECT user_id,token_hash,expire_at,is_valid FROM tokens WHERE"
+                                         + " token_hash=?")) {
                 select.setString(1, hash);
                 try (ResultSet rs = select.executeQuery()) {
                     assertTrue(rs.next());
@@ -430,7 +435,7 @@ class UserServiceIT {
                 }
             }
             try (PreparedStatement revoke =
-                    c.prepareStatement("UPDATE tokens SET is_valid=FALSE WHERE token_hash=?")) {
+                         c.prepareStatement("UPDATE tokens SET is_valid=FALSE WHERE token_hash=?")) {
                 revoke.setString(1, hash);
                 assertEquals(1, revoke.executeUpdate());
             }
@@ -441,7 +446,7 @@ class UserServiceIT {
     @Test
     void oldExpiryColumnMigrationPreservesTokens() throws Exception {
         try (Connection c = connection();
-                Statement statement = c.createStatement()) {
+             Statement statement = c.createStatement()) {
             statement.execute("SET search_path TO " + schema);
             statement.execute("ALTER TABLE tokens RENAME COLUMN expire_at TO expires_at");
             statement.execute("ALTER INDEX tokens_expire_at_idx RENAME TO tokens_expires_at_idx");
@@ -457,7 +462,7 @@ class UserServiceIT {
 
     private void update(String sql) throws SQLException {
         try (Connection c = connection();
-                Statement s = c.createStatement()) {
+             Statement s = c.createStatement()) {
             s.execute("SET search_path TO " + schema);
             s.executeUpdate(sql);
         }

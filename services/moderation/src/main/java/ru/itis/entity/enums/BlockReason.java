@@ -41,9 +41,11 @@ public enum BlockReason {
     public String getDescription() {
         return description;
     }
+
     public Optional<Long> getDefaultDurationSeconds() {
         return Optional.ofNullable(defaultDurationSeconds);
     }
+
     public boolean isPermanent() {
         return defaultDurationSeconds == null;
     }

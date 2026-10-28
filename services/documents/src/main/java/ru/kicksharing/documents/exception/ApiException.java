@@ -8,11 +8,6 @@ public class ApiException extends RuntimeException {
         this.statusCode = statusCode;
     }
 
-    public int getStatusCode() {
-        return statusCode;
-    }
-
-    // Статические фабрики для удобства
     public static ApiException notFound(String msg) {
         return new ApiException(404, msg);
     }
@@ -31,5 +26,9 @@ public class ApiException extends RuntimeException {
 
     public static ApiException serviceUnavailable(String msg) {
         return new ApiException(503, msg);
+    }
+
+    public int getStatusCode() {
+        return statusCode;
     }
 }

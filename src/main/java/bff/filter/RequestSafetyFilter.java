@@ -3,12 +3,16 @@ package bff.filter;
 import bff.service.impl.JsonText;
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebFilter;
-import jakarta.servlet.http.*;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
 import java.net.URI;
 import java.util.Set;
 
-/** Reject browser cross-site writes; API writes carrying a body must use JSON. */
+
+
+
 @WebFilter("/*")
 public class RequestSafetyFilter implements Filter {
     @Override
@@ -38,6 +42,7 @@ public class RequestSafetyFilter implements Filter {
         }
         chain.doFilter(request, response);
     }
+
     private boolean sameOrigin(String origin, String ownOrigin) {
         try {
             URI a = URI.create(origin), b = URI.create(ownOrigin);
@@ -45,11 +50,15 @@ public class RequestSafetyFilter implements Filter {
                     && a.getScheme().equalsIgnoreCase(b.getScheme()) && port(a) == port(b)
                     && (a.getRawPath() == null || a.getRawPath().isEmpty())
                     && a.getRawQuery() == null && a.getRawFragment() == null && a.getRawUserInfo() == null;
-        } catch (IllegalArgumentException e) { return false; }
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
+
     private int port(URI uri) {
         return uri.getPort() >= 0 ? uri.getPort() : "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
     }
+
     private void error(HttpServletResponse resp, int status, String message) throws IOException {
         resp.setStatus(status);
         resp.setContentType("application/json");

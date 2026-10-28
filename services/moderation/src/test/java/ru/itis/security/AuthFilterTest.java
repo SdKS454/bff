@@ -18,7 +18,8 @@ class AuthFilterTest {
 
     private static final String STATUS_PATH = "/users/%s/status";
 
-    private final AuthFilter filter = new AuthFilter(token -> {});
+    private final AuthFilter filter = new AuthFilter(token -> {
+    });
     private final UUID userId = UUID.randomUUID();
 
     private HttpServletResponse resp;

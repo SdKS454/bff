@@ -9,10 +9,21 @@
 
     const TOKEN_KEY = "accessToken";
 
-    function getToken() { return sessionStorage.getItem(TOKEN_KEY); }
-    function saveToken(token) { sessionStorage.setItem(TOKEN_KEY, token); }
-    function clearToken() { sessionStorage.removeItem(TOKEN_KEY); }
-    function goToLogin() { window.location.href = LOGIN_URL; }
+    function getToken() {
+        return sessionStorage.getItem(TOKEN_KEY);
+    }
+
+    function saveToken(token) {
+        sessionStorage.setItem(TOKEN_KEY, token);
+    }
+
+    function clearToken() {
+        sessionStorage.removeItem(TOKEN_KEY);
+    }
+
+    function goToLogin() {
+        window.location.href = LOGIN_URL;
+    }
 
     function parseJwt(token) {
         try {
@@ -30,19 +41,22 @@
                 ...options,
                 headers: {
                     "Accept": "application/json",
-                    ...(options.body ? { "Content-Type": "application/json" } : {}),
+                    ...(options.body ? {"Content-Type": "application/json"} : {}),
                     "Authorization": "Bearer " + getToken()
                 }
             });
         } catch (e) {
-            throw { status: 0, message: "Нет связи с сервером" };
+            throw {status: 0, message: "Нет связи с сервером"};
         }
 
         let data = null;
-        try { data = await response.json(); } catch (e) { }
+        try {
+            data = await response.json();
+        } catch (e) {
+        }
 
         if (!response.ok) {
-            throw { status: response.status, message: data && data.error };
+            throw {status: response.status, message: data && data.error};
         }
         return data;
     }
@@ -148,8 +162,8 @@
         setTableState("Загрузка…");
 
         const reasonsPromise = loadReasons().then(
-            (data) => ({ ok: true, data }),
-            (err) => ({ ok: false, err })
+            (data) => ({ok: true, data}),
+            (err) => ({ok: false, err})
         );
 
         try {
@@ -339,7 +353,7 @@
         try {
             const response = await request(
                 USER_URL + "/api/users/" + encodeURIComponent(banTargetUser.id) + "/ban",
-                { method: "POST", body: JSON.stringify({ reason: reason.reasonType }) }
+                {method: "POST", body: JSON.stringify({reason: reason.reasonType})}
             );
             closeBanModal();
             if (response && response.reasonType && response.reasonType !== reason.reasonType) {
@@ -388,7 +402,7 @@
         try {
             await request(
                 USER_URL + "/api/users/" + encodeURIComponent(unbanTargetUser.id) + "/unban",
-                { method: "POST" }
+                {method: "POST"}
             );
             closeUnbanModal();
             showMessage("Блокировка снята", "success");
@@ -423,13 +437,18 @@
         const button = document.getElementById("logout-btn");
         button.disabled = true;
         try {
-            try { await request(USER_URL + "/api/users/logout", { method: "POST" }); }
-            catch (err) { if (!err || err.status !== 401) throw err; }
+            try {
+                await request(USER_URL + "/api/users/logout", {method: "POST"});
+            } catch (err) {
+                if (!err || err.status !== 401) throw err;
+            }
             clearToken();
             goToLogin();
         } catch (err) {
             showMessage("Не удалось отозвать токен: " + errorToText(err) + ". Повторите выход.", "error");
-        } finally { button.disabled = false; }
+        } finally {
+            button.disabled = false;
+        }
     });
 
     function init() {

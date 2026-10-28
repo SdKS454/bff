@@ -6,16 +6,26 @@ import bff.service.UserService;
 import bff.service.impl.UserServiceRestImpl;
 import bff.web.Tokens;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.*;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
 import java.io.IOException;
 
 @WebServlet({"/logout", "/api/auth/logout"})
 public class LogoutServlet extends BaseServlet {
     private UserService userService;
-    @Override public void init() { userService = new UserServiceRestImpl(); }
 
-    /** GET is a navigable confirmation, never a state-changing operation. */
-    @Override protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    @Override
+    public void init() {
+        userService = new UserServiceRestImpl();
+    }
+
+
+
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         if (!"/logout".equals(req.getServletPath())) {
             writeError(resp, 405, "Используйте POST");
             return;
@@ -26,7 +36,8 @@ public class LogoutServlet extends BaseServlet {
                 + "<form method=\"post\"><button type=\"submit\">Выйти</button></form></html>");
     }
 
-    @Override protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         String jwt = Tokens.get(req);
         JsonResponse result = null;
         ServiceException failure = null;
@@ -38,7 +49,7 @@ public class LogoutServlet extends BaseServlet {
             HttpSession session = req.getSession(false);
             if (session != null) session.invalidate();
         }
-        // Never claim successful global logout when revocation could not be confirmed.
+
         if (failure != null) {
             writeError(resp, failure.status(), "Сессия BFF закрыта, но отзыв токена не подтверждён: сервис пользователей недоступен");
             return;
@@ -47,7 +58,7 @@ public class LogoutServlet extends BaseServlet {
             writeError(resp, result.status(), "Сессия BFF закрыта, но User Service не подтвердил отзыв токена");
             return;
         }
-        // A 401 means the token is already unusable (expired or revoked).
+
         if ("/api/auth/logout".equals(req.getServletPath())) resp.setStatus(204);
         else {
             resp.setStatus(303);

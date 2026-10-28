@@ -52,13 +52,14 @@ public class RideServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-        if(req.getPathInfo()!=null && !req.getPathInfo().equals("/")) {
-            String path=req.getPathInfo().substring(1);
-            if(path.contains("/"))throw new ApiException(404,"Путь не найден");
-            writeJson(resp,200,rideService.get((UUID)req.getAttribute("userId"),parseUuid(path,404)));return;
+        if (req.getPathInfo() != null && !req.getPathInfo().equals("/")) {
+            String path = req.getPathInfo().substring(1);
+            if (path.contains("/")) throw new ApiException(404, "Путь не найден");
+            writeJson(resp, 200, rideService.get((UUID) req.getAttribute("userId"), parseUuid(path, 404)));
+            return;
         }
         UUID userId = (UUID) req.getAttribute("userId");
-        UUID requestedUserId = req.getParameter("userId")==null?userId:parseUuid(req.getParameter("userId"), 400);
+        UUID requestedUserId = req.getParameter("userId") == null ? userId : parseUuid(req.getParameter("userId"), 400);
         writeJson(resp, 200, rideService.history(userId, requestedUserId));
     }
 
@@ -66,7 +67,8 @@ public class RideServlet extends HttpServlet {
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         UUID userId = (UUID) req.getAttribute("userId");
         if (req.getPathInfo() == null || req.getPathInfo().equals("/")) {
-            if(Boolean.TRUE.equals(req.getAttribute("blocked")))throw new ApiException(403,"Пользователь заблокирован");
+            if (Boolean.TRUE.equals(req.getAttribute("blocked")))
+                throw new ApiException(403, "Пользователь заблокирован");
             StartRideRequest body = objectMapper.treeToValue(ru.itis.util.Json.body(req), StartRideRequest.class);
             if (body == null) {
                 throw new ApiException(400, "Нужны данные поездки");
@@ -84,12 +86,16 @@ public class RideServlet extends HttpServlet {
             String[] parts = req.getPathInfo().split("/", -1);
             if (parts.length != 3) throw new ApiException(404, "Путь не найден");
             var review = ru.itis.dto.ReviewRequest.from(ru.itis.util.Json.body(req));
-            writeJson(resp, 200, rideService.review((UUID)req.getAttribute("userId"), parseUuid(parts[1], 404), review));
+            writeJson(resp, 200, rideService.review((UUID) req.getAttribute("userId"), parseUuid(parts[1], 404), review));
             return;
         }
-        if(req.getPathInfo()!=null && req.getPathInfo().endsWith("/position")) {
-            String[] parts=req.getPathInfo().split("/",-1);if(parts.length!=3)throw new ApiException(404,"Путь не найден");
-            var body=ru.itis.util.Json.body(req);rideService.position((UUID)req.getAttribute("userId"),parseUuid(parts[1],404),ru.itis.util.Json.number(body,"posX",true),ru.itis.util.Json.number(body,"posY",true));resp.setStatus(204);return;
+        if (req.getPathInfo() != null && req.getPathInfo().endsWith("/position")) {
+            String[] parts = req.getPathInfo().split("/", -1);
+            if (parts.length != 3) throw new ApiException(404, "Путь не найден");
+            var body = ru.itis.util.Json.body(req);
+            rideService.position((UUID) req.getAttribute("userId"), parseUuid(parts[1], 404), ru.itis.util.Json.number(body, "posX", true), ru.itis.util.Json.number(body, "posY", true));
+            resp.setStatus(204);
+            return;
         }
         UUID id = parseRideId(req, "finish");
         FinishRideRequest body = objectMapper.treeToValue(ru.itis.util.Json.body(req), FinishRideRequest.class);
@@ -120,7 +126,7 @@ public class RideServlet extends HttpServlet {
             throw new ApiException(status, "Нужен UUID");
         }
         try {
-            if(!value.matches("[0-9a-fA-F-]{36}"))throw new IllegalArgumentException();
+            if (!value.matches("[0-9a-fA-F-]{36}")) throw new IllegalArgumentException();
             return UUID.fromString(value);
         } catch (IllegalArgumentException e) {
             throw new ApiException(status, "Некорректный UUID");
@@ -129,14 +135,18 @@ public class RideServlet extends HttpServlet {
 
     private void writeJson(HttpServletResponse resp, int status, Object value) throws IOException {
         resp.setStatus(status);
-        var tree=objectMapper.valueToTree(value);
+        var tree = objectMapper.valueToTree(value);
         publicState(tree);
         objectMapper.writeValue(resp.getWriter(), tree);
     }
+
     private void publicState(com.fasterxml.jackson.databind.JsonNode n) {
-        if(n.isArray()){n.forEach(this::publicState);return;}
-        if(n.isObject() && "FINISHING".equals(n.path("status").asText()))
-            ((com.fasterxml.jackson.databind.node.ObjectNode)n).put("status","ACTIVE");
+        if (n.isArray()) {
+            n.forEach(this::publicState);
+            return;
+        }
+        if (n.isObject() && "FINISHING".equals(n.path("status").asText()))
+            ((com.fasterxml.jackson.databind.node.ObjectNode) n).put("status", "ACTIVE");
     }
 
 }

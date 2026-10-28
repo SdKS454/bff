@@ -10,17 +10,51 @@ public class ModerationResponse {
     private OffsetDateTime blockedAt;
     private OffsetDateTime blockedUntil;
 
-    // Геттеры и сеттеры
-    public String getUserId() { return userId; }
-    public void setUserId(String userId) { this.userId = userId; }
-    public boolean isBlocked() { return blocked; }
-    public void setBlocked(boolean blocked) { this.blocked = blocked; }
-    public String getReasonType() { return reasonType; }
-    public void setReasonType(String reasonType) { this.reasonType = reasonType; }
-    public String getReason() { return reason; }
-    public void setReason(String reason) { this.reason = reason; }
-    public OffsetDateTime getBlockedAt() { return blockedAt; }
-    public void setBlockedAt(OffsetDateTime blockedAt) { this.blockedAt = blockedAt; }
-    public OffsetDateTime getBlockedUntil() { return blockedUntil; }
-    public void setBlockedUntil(OffsetDateTime blockedUntil) { this.blockedUntil = blockedUntil; }
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public boolean isBlocked() {
+        return blocked;
+    }
+
+    public void setBlocked(boolean blocked) {
+        this.blocked = blocked;
+    }
+
+    public String getReasonType() {
+        return reasonType;
+    }
+
+    public void setReasonType(String reasonType) {
+        this.reasonType = reasonType;
+    }
+
+    public String getReason() {
+        return reason;
+    }
+
+    public void setReason(String reason) {
+        this.reason = reason;
+    }
+
+    public OffsetDateTime getBlockedAt() {
+        return blockedAt;
+    }
+
+    public void setBlockedAt(OffsetDateTime blockedAt) {
+        this.blockedAt = blockedAt;
+    }
+
+    public OffsetDateTime getBlockedUntil() {
+        return blockedUntil;
+    }
+
+    public void setBlockedUntil(OffsetDateTime blockedUntil) {
+        this.blockedUntil = blockedUntil;
+    }
 }

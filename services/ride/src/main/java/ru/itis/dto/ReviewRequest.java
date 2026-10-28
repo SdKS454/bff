@@ -10,21 +10,26 @@ public record ReviewRequest(int rideRating, int scooterRating, String rideCommen
         rideComment = comment(rideComment);
         scooterComment = comment(scooterComment);
     }
+
     public static ReviewRequest from(JsonNode body) {
         return new ReviewRequest(rating(body, "rideRating"), rating(body, "scooterRating"),
                 text(body, "rideComment"), text(body, "scooterComment"));
     }
+
     private static int rating(JsonNode body, String key) {
         var value = body.path(key);
-        if (!value.isIntegralNumber() || !value.canConvertToInt()) throw new ApiException(400, "Нужна целая оценка " + key);
+        if (!value.isIntegralNumber() || !value.canConvertToInt())
+            throw new ApiException(400, "Нужна целая оценка " + key);
         return value.intValue();
     }
+
     private static String text(JsonNode body, String key) {
         var value = body.get(key);
         if (value == null || value.isNull()) return "";
         if (!value.isTextual()) throw new ApiException(400, "Комментарий должен быть строкой");
         return value.textValue();
     }
+
     private static String comment(String value) {
         if (value == null) return "";
         if (value.length() > 1000 || value.codePoints().anyMatch(c -> Character.isISOControl(c) && c != '\n' && c != '\r' && c != '\t'))

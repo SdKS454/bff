@@ -1,4 +1,6 @@
 <web-app xmlns="https://jakarta.ee/xml/ns/jakartaee" version="6.0">
- <display-name>Ride Service</display-name>
- <session-config><tracking-mode>COOKIE</tracking-mode></session-config>
+    <display-name>Ride Service</display-name>
+    <session-config>
+        <tracking-mode>COOKIE</tracking-mode>
+    </session-config>
 </web-app>

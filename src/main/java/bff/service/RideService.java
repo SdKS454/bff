@@ -1,16 +1,16 @@
 package bff.service;
 
-import java.util.UUID;
-
 import bff.dto.EndRideRequest;
 import bff.dto.JsonResponse;
 import bff.dto.StartRideRequest;
+
+import java.util.UUID;
 
 public interface RideService {
 
     JsonResponse start(String jwt, StartRideRequest request);
 
-    JsonResponse position(String jwt,UUID rideId,EndRideRequest request);
+    JsonResponse position(String jwt, UUID rideId, EndRideRequest request);
 
     JsonResponse finish(String jwt, UUID rideId, EndRideRequest request);
 

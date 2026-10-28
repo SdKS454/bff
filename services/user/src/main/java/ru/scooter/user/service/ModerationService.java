@@ -1,9 +1,9 @@
 package ru.scooter.user.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-
 import ru.scooter.user.client.ModerationClient;
-import ru.scooter.user.dto.*;
+import ru.scooter.user.dto.AuthPrincipal;
+import ru.scooter.user.dto.BanRequest;
 import ru.scooter.user.util.Validation;
 
 import java.util.UUID;

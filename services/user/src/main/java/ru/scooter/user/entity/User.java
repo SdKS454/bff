@@ -15,4 +15,5 @@ public record User(
         Instant createdAt,
         Instant updatedAt,
         boolean deleted,
-        Instant deletedAt) {}
+        Instant deletedAt) {
+}

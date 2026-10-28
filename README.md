@@ -6,3 +6,5 @@
 - [Отчёт финальной проверки](docs/FINAL_VERIFICATION.md).
 
 В dist включены шесть готовых WAR; исходники и скрипты рядом. Начните с README_RU.md.
+
+[Примечания к текущей сборке](docs/RELEASE_NOTES.md).

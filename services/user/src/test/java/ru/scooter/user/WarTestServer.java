@@ -3,9 +3,12 @@ package ru.scooter.user;
 import org.apache.catalina.Context;
 import org.apache.catalina.startup.Tomcat;
 
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
-/** Child JVM uses real process environment and deploys the packaged WAR with its web.xml. */
+
+
+
 public final class WarTestServer {
     public static void main(String[] args) throws Exception {
         Tomcat tomcat = new Tomcat();

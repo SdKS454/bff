@@ -1,12 +1,14 @@
 package ru.scooter.user.util;
 
 import com.fasterxml.jackson.core.StreamReadFeature;
-import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-
-import jakarta.servlet.http.*;
-
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import ru.scooter.user.exception.ApiException;
 
 import java.io.IOException;
@@ -22,7 +24,8 @@ public final class Json {
                     .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
                     .build();
 
-    private Json() {}
+    private Json() {
+    }
 
     public static <T> T read(HttpServletRequest req, Class<T> type) throws IOException {
         String contentType = req.getContentType();

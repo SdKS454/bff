@@ -14,15 +14,21 @@ public interface RideRepository {
 
     List<RideEntity> findByUserId(UUID userId);
 
-    boolean position(UUID id,double x,double y,Instant at);
+    boolean position(UUID id, double x, double y, Instant at);
 
     boolean finish(RideEntity ride);
 
     boolean activate(UUID id, Instant startedAt);
+
     void cancel(UUID id);
+
     void removeCancelled(UUID id);
+
     boolean completeFinish(UUID id);
+
     List<RideEntity> pending();
+
     boolean review(UUID id, ru.itis.model.RideReview review);
+
     boolean pay(UUID id, Instant paidAt);
 }
