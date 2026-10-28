@@ -38,6 +38,12 @@ public class ScooterServiceRestImpl implements ScooterService {
         return send("GET", URI.create(BASE + "/api/scooters/" + plate), jwt, null);
     }
 
+    public JsonResponse admin(String method, String path, String jwt, String json) {
+        if (!path.matches("(?:/[A-Za-z0-9_.-]{1,64}(?:/charge)?)?"))
+            throw new ServiceException(404, "Путь не найден");
+        return send(method, URI.create(BASE + "/api/admin/scooters" + path), jwt, json);
+    }
+
     private JsonResponse send(String method, URI uri, String jwt, String json) {
         HttpRequest.Builder builder = HttpRequest.newBuilder(uri)
                 .header("Accept", "application/json")

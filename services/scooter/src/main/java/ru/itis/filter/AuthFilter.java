@@ -30,6 +30,12 @@ public class AuthFilter implements Filter {
     try{
      int code=CLIENT.send(HttpRequest.newBuilder(URI.create(base+"/api/users/validate")).timeout(Duration.ofSeconds(3)).header("Authorization",auth).GET().build(),HttpResponse.BodyHandlers.discarding()).statusCode();
      if(code==401)throw new ApiException(401,"Недействительный JWT");if(code!=204)throw new ApiException(503,"Проверка токена недоступна");
+     if(path.equals("/api/admin/scooters") || path.startsWith("/api/admin/scooters/")) {
+      var me=CLIENT.send(HttpRequest.newBuilder(URI.create(base+"/api/users/me")).timeout(Duration.ofSeconds(3)).header("Authorization",auth).GET().build(),HttpResponse.BodyHandlers.ofString());
+      if(me.statusCode()==401)throw new ApiException(401,"Недействительный JWT");
+      if(me.statusCode()!=200)throw new ApiException(503,"Проверка роли недоступна");
+      if(!"ADMIN".equals(Json.MAPPER.readTree(me.body()).path("role").asText()))throw new ApiException(403,"Требуется роль ADMIN");
+     }
     }catch(InterruptedException e){Thread.currentThread().interrupt();throw new ApiException(503,"Запрос прерван");}
     catch(IOException e){throw new ApiException(503,"User Service недоступен");}
    }

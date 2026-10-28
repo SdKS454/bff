@@ -19,4 +19,11 @@ class ScooterDistanceTest {
   assertEquals(400,assertThrows(ApiException.class,()->new Scooters().list("READY",181.0,0.0)).status);
   assertEquals(400,assertThrows(ApiException.class,()->new Scooters().list("READY",0.0,91.0)).status);
  }
+ @Test void invalidAdminCoordinatesAndPlateRejectedBeforeDatabaseConnection() {
+  for(String plate:new String[]{"", "a/b", "<script>", "A".repeat(65)})
+   assertEquals(400,assertThrows(ApiException.class,()->new Scooters().create(plate,37.6,55.7)).status);
+  assertEquals(400,assertThrows(ApiException.class,()->new Scooters().create("TEST",181,0)).status);
+  assertEquals(400,assertThrows(ApiException.class,()->new Scooters().create("TEST",0,91)).status);
+  assertEquals(400,assertThrows(ApiException.class,()->new Scooters().create("TEST",Double.NaN,0)).status);
+ }
 }

@@ -1,5 +1,5 @@
 {
-  "revision": "teacher-final-2026-10-28",
+  "revision": "scooter-admin-integration-2026-10-28",
   "ports": {
     "BFF": 8080,
     "User": 8081,
@@ -802,6 +802,110 @@
       "expected": "Публичный массив оценок, комментариев и reviewedAt; нет userId, rideId, логинов, сумм и координат",
       "pre": "Нужна миграция отзывов 002; пустой список допустим",
       "source": "services/ride/src/main/java/ru/itis/servlet/PublicReviewServlet.java"
+    },
+    {
+      "id": "E061",
+      "service": "BFF",
+      "method": "GET",
+      "url": "http://localhost:8080/api/admin/scooters",
+      "auth": "ADMIN",
+      "body": null,
+      "status": 200,
+      "expected": "Неудалённые самокаты",
+      "pre": "Войти ADMIN",
+      "source": "src/main/java/bff/servlet/AdminScooterProxyServlet.java"
+    },
+    {
+      "id": "E062",
+      "service": "BFF",
+      "method": "POST",
+      "url": "http://localhost:8080/api/admin/scooters",
+      "auth": "ADMIN",
+      "body": {
+        "numberPlate": "{{adminPlate}}",
+        "posX": 37.618423,
+        "posY": 55.751244
+      },
+      "status": 201,
+      "expected": "READY, заряд100, дробные GPS-координаты",
+      "pre": "Новый уникальный adminPlate; используйте разные номера для BFF и Scooter",
+      "source": "src/main/java/bff/servlet/AdminScooterProxyServlet.java"
+    },
+    {
+      "id": "E063",
+      "service": "BFF",
+      "method": "POST",
+      "url": "http://localhost:8080/api/admin/scooters/{{adminPlate}}/charge",
+      "auth": "ADMIN",
+      "body": null,
+      "status": 200,
+      "expected": "Заряд100; REPAIR сохраняется, CHARGING→READY",
+      "pre": "Существующий adminPlate, не IN_RIDE",
+      "source": "src/main/java/bff/servlet/AdminScooterProxyServlet.java"
+    },
+    {
+      "id": "E064",
+      "service": "BFF",
+      "method": "DELETE",
+      "url": "http://localhost:8080/api/admin/scooters/{{adminPlate}}",
+      "auth": "ADMIN",
+      "body": null,
+      "status": 204,
+      "expected": "Мягкое удаление, повтор204; каталоги и новые резервации не показывают самокат",
+      "pre": "После проверки зарядки, не IN_RIDE",
+      "source": "src/main/java/bff/servlet/AdminScooterProxyServlet.java"
+    },
+    {
+      "id": "E065",
+      "service": "Scooter",
+      "method": "GET",
+      "url": "http://localhost:8083/api/admin/scooters",
+      "auth": "ADMIN",
+      "body": null,
+      "status": 200,
+      "expected": "Неудалённые самокаты",
+      "pre": "Войти ADMIN",
+      "source": "services/scooter/src/main/java/ru/itis/servlet/AdminScooterServlet.java"
+    },
+    {
+      "id": "E066",
+      "service": "Scooter",
+      "method": "POST",
+      "url": "http://localhost:8083/api/admin/scooters",
+      "auth": "ADMIN",
+      "body": {
+        "numberPlate": "{{adminPlate}}",
+        "posX": 37.618423,
+        "posY": 55.751244
+      },
+      "status": 201,
+      "expected": "READY, заряд100, дробные GPS-координаты",
+      "pre": "Новый уникальный adminPlate; используйте разные номера для BFF и Scooter",
+      "source": "services/scooter/src/main/java/ru/itis/servlet/AdminScooterServlet.java"
+    },
+    {
+      "id": "E067",
+      "service": "Scooter",
+      "method": "POST",
+      "url": "http://localhost:8083/api/admin/scooters/{{adminPlate}}/charge",
+      "auth": "ADMIN",
+      "body": null,
+      "status": 200,
+      "expected": "Заряд100; REPAIR сохраняется, CHARGING→READY",
+      "pre": "Существующий adminPlate, не IN_RIDE",
+      "source": "services/scooter/src/main/java/ru/itis/servlet/AdminScooterServlet.java"
+    },
+    {
+      "id": "E068",
+      "service": "Scooter",
+      "method": "DELETE",
+      "url": "http://localhost:8083/api/admin/scooters/{{adminPlate}}",
+      "auth": "ADMIN",
+      "body": null,
+      "status": 204,
+      "expected": "Мягкое удаление, повтор204; каталоги и новые резервации не показывают самокат",
+      "pre": "После проверки зарядки, не IN_RIDE",
+      "source": "services/scooter/src/main/java/ru/itis/servlet/AdminScooterServlet.java"
     }
   ]
 }

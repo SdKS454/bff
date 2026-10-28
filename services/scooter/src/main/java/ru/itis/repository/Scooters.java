@@ -91,5 +91,47 @@ public class Scooters {
    if(q.executeUpdate()!=1)throw new ApiException(409,"Самокат больше не принадлежит активной поездке");return get(plate);
   }catch(SQLException e){throw unavailable(e);}
  }
+ public Scooter create(String plate,double x,double y) {
+  if(plate==null||plate.equals(".")||plate.equals("..")||!plate.matches("[A-Za-z0-9_.-]{1,64}"))throw new ApiException(400,"Номер: 1–64 символа латиницы, цифр, _, . или -");
+  if(!validGps(x,y))throw new ApiException(400,"posX: долгота от -180 до 180; posY: широта от -90 до 90");
+  try(var c=connect();var q=c.prepareStatement("INSERT INTO scooter(numeric_plate,charge,status,position_x,position_y) VALUES(?,100,'READY',?,?) RETURNING *")) {
+   q.setString(1,plate);q.setDouble(2,x);q.setDouble(3,y);try(var rows=q.executeQuery()){rows.next();return map(rows,null,null);}
+  }catch(SQLException e){if("23505".equals(e.getSQLState()))throw new ApiException(409,"Этот номер уже использован, в том числе удалённым самокатом");throw unavailable(e);}
+ }
+ public Scooter charge(String plate) {
+  try(var c=connect()) {
+   c.setAutoCommit(false);
+   try {
+    lockAvailable(c,plate);
+    try(var q=c.prepareStatement("UPDATE scooter SET charge=100,status=CASE WHEN status='CHARGING' THEN 'READY' ELSE status END WHERE numeric_plate=? RETURNING *")) {
+     q.setString(1,plate);try(var rows=q.executeQuery()){rows.next();var scooter=map(rows,null,null);c.commit();return scooter;}
+    }
+   }catch(SQLException|RuntimeException e){c.rollback();throw e;}
+  }catch(SQLException e){throw unavailable(e);}
+ }
+ public void delete(String plate) {
+  try(var c=connect()) {
+   c.setAutoCommit(false);
+   try {
+    // Lock the same row used by reserve: deleting/charging cannot interrupt an active ride.
+    try(var q=c.prepareStatement("SELECT status,is_deleted FROM scooter WHERE numeric_plate=? FOR UPDATE")) {
+     q.setString(1,plate);try(var rows=q.executeQuery()) {
+      if(!rows.next())throw new ApiException(404,"Самокат не найден");
+      if(!rows.getBoolean("is_deleted")&&"IN_RIDE".equals(rows.getString("status")))throw new ApiException(409,"Нельзя удалить самокат во время поездки");
+     }
+    }
+    try(var q=c.prepareStatement("UPDATE scooter SET is_deleted=true WHERE numeric_plate=?")){q.setString(1,plate);q.executeUpdate();}
+    c.commit();
+   }catch(SQLException|RuntimeException e){c.rollback();throw e;}
+  }catch(SQLException e){throw unavailable(e);}
+ }
+ private void lockAvailable(Connection c,String plate)throws SQLException {
+  try(var q=c.prepareStatement("SELECT status FROM scooter WHERE numeric_plate=? AND NOT is_deleted FOR UPDATE")) {
+   q.setString(1,plate);try(var rows=q.executeQuery()){
+    if(!rows.next())throw new ApiException(404,"Самокат не найден");
+    if("IN_RIDE".equals(rows.getString("status")))throw new ApiException(409,"Нельзя зарядить самокат во время поездки");
+   }
+  }
+ }
  private ApiException unavailable(SQLException e){return new ApiException(503,"Хранилище самокатов недоступно");}
 }

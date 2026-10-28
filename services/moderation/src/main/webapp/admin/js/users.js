@@ -1,6 +1,12 @@
 (function () {
     "use strict";
 
+    const scootersLink = document.getElementById("scooters-link");
+    if (scootersLink) {
+        scootersLink.href = new URL("admin/scooters", new URL(".", LOGIN_URL)).href;
+        scootersLink.hidden = false;
+    }
+
     const TOKEN_KEY = "accessToken";
 
     function getToken() { return sessionStorage.getItem(TOKEN_KEY); }

@@ -78,7 +78,8 @@ class BffIT {
         calls.add(new Call(e.getRequestMethod(), path, e.getRequestURI().getRawQuery(), e.getRequestHeaders().getFirst("Authorization"), body));
         int status = 200;
         String result = "{}";
-        if (path.equals("/api/reviews")) { status = rideStatus; result = "[]"; }
+        if (path.startsWith("/api/admin/scooters")) result="[]";
+        else if (path.equals("/api/reviews")) { status = rideStatus; result = "[]"; }
         else if (path.endsWith("/validate")) status = validateStatus;
         else if (path.equals("/api/users/login")) { status = loginStatus; result = loginBody; }
         else if (path.equals("/api/users/logout")) { status = logoutStatus; result = "{\"error\":\"Logout unavailable\"}"; }
@@ -433,5 +434,34 @@ class BffIT {
         assertEquals(200, response.statusCode());
         assertTrue(response.headers().firstValue("Content-Type").orElseThrow().startsWith("application/pdf"));
         assertTrue(response.body().startsWith("%PDF-"));
+    }
+    @Test void fleetAdminRequiresAuthenticationAndCurrentAdminRole() throws Exception {
+        assertEquals(401, request("GET", "/api/admin/scooters", null, null).statusCode());
+        assertEquals(403, request("GET", "/api/admin/scooters", null, "Bearer user").statusCode());
+        assertFalse(called("/api/admin/scooters"));
+        assertEquals(403, request("GET", "/admin/scooters", null, "Bearer user").statusCode());
+    }
+    @Test void fleetAdminForwardsTokenAndWritesOnlyForAdmin() throws Exception {
+        profile=profile.replace("USER", "ADMIN");
+        assertEquals(200, request("GET", "/api/admin/scooters", null, "Bearer admin").statusCode());
+        assertEquals("Bearer admin", last("/api/admin/scooters").authorization());
+        String body="{\"numberPlate\":\"TEST\",\"posX\":37.6,\"posY\":55.7}";
+        assertEquals(200, request("POST", "/api/admin/scooters", body, "Bearer admin").statusCode());
+        assertEquals(body,last("/api/admin/scooters").body());
+        assertEquals(405,request("GET","/api/admin/scooters/TEST/charge",null,"Bearer admin").statusCode());
+        assertEquals(200,request("POST","/api/admin/scooters/TEST/charge",null,"Bearer admin").statusCode());
+        assertEquals("POST",last("/api/admin/scooters/TEST/charge").method());
+        assertEquals(200,request("DELETE","/api/admin/scooters/TEST",null,"Bearer admin").statusCode());
+        assertEquals("DELETE",last("/api/admin/scooters/TEST").method());
+    }
+    @Test void fleetAdminPageCompilesAndDoesNotExposeToken() throws Exception {
+        assertEquals(302,request("GET","/admin/scooters",null,null).statusCode());
+        profile=profile.replace("USER", "ADMIN");
+        var result=request("GET","/admin/scooters",null,"Bearer secret-token");
+        assertEquals(200,result.statusCode(),result.body());
+        assertTrue(result.body().contains("Управление самокатами"));
+        assertTrue(result.body().contains("/scooter-bff/frontend/admin-scooters.js"));
+        assertFalse(result.body().contains("secret-token"));
+        assertEquals(404,request("GET","/WEB-INF/admin-scooters.jsp",null,"Bearer admin").statusCode());
     }
 }
