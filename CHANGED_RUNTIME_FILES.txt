@@ -1,0 +1,76 @@
+Код: 37dc8e3, ветка temp/reviews-validation
+
+Последнее обновление поверх 930306f: 25 рабочих файлов
+services/documents/src/main/java/ru/kicksharing/documents/servlet/DocumentServlet.java
+services/documents/src/main/java/ru/kicksharing/documents/util/BrowserNavigation.java
+services/moderation/src/main/java/ru/itis/controller/ErrorServlet.java
+services/moderation/src/main/java/ru/itis/security/AuthFilter.java
+services/moderation/src/main/java/ru/itis/util/BrowserNavigation.java
+services/ride/src/main/java/ru/itis/filter/AuthFilter.java
+services/ride/src/main/java/ru/itis/model/PublicReview.java
+services/ride/src/main/java/ru/itis/repository/impl/PublicReviewRepository.java
+services/ride/src/main/java/ru/itis/servlet/PublicReviewServlet.java
+services/ride/src/main/java/ru/itis/util/BrowserNavigation.java
+services/scooter/src/main/java/ru/itis/filter/AuthFilter.java
+services/scooter/src/main/java/ru/itis/util/BrowserNavigation.java
+services/user/src/main/java/ru/scooter/user/filter/ErrorFilter.java
+services/user/src/main/java/ru/scooter/user/util/BrowserNavigation.java
+src/main/java/bff/filter/JwtAuthFilter.java
+src/main/java/bff/service/impl/RideServiceRestImpl.java
+src/main/java/bff/servlet/AuthEntryServlet.java
+src/main/java/bff/servlet/FrontendConfigServlet.java
+src/main/java/bff/servlet/PublicReviewProxyServlet.java
+src/main/java/bff/web/BrowserNavigation.java
+src/main/webapp/frontend/account.js
+src/main/webapp/frontend/script.js
+src/main/webapp/frontend/style.css
+src/main/webapp/index.jsp
+src/main/webapp/login.jsp
+
+Все рабочие изменения поверх GPS/Linux cfe0bf6: 42 файлов
+local-stack/migrations/ride/002_reviews.sql
+services/documents/src/main/java/ru/kicksharing/documents/servlet/DocumentServlet.java
+services/documents/src/main/java/ru/kicksharing/documents/util/BrowserNavigation.java
+services/documents/src/main/java/ru/kicksharing/documents/util/JwtPublicKeyLoader.java
+services/documents/src/main/java/ru/kicksharing/documents/util/JwtUtil.java
+services/moderation/src/main/java/ru/itis/controller/ErrorServlet.java
+services/moderation/src/main/java/ru/itis/security/AuthFilter.java
+services/moderation/src/main/java/ru/itis/util/BrowserNavigation.java
+services/ride/src/main/java/ru/itis/dto/ReviewRequest.java
+services/ride/src/main/java/ru/itis/filter/AuthFilter.java
+services/ride/src/main/java/ru/itis/model/PublicReview.java
+services/ride/src/main/java/ru/itis/model/RideEntity.java
+services/ride/src/main/java/ru/itis/model/RideReview.java
+services/ride/src/main/java/ru/itis/repository/RideRepository.java
+services/ride/src/main/java/ru/itis/repository/impl/PublicReviewRepository.java
+services/ride/src/main/java/ru/itis/repository/impl/RideRepositoryJdbcImpl.java
+services/ride/src/main/java/ru/itis/service/RideService.java
+services/ride/src/main/java/ru/itis/service/impl/RideServiceImpl.java
+services/ride/src/main/java/ru/itis/servlet/PublicReviewServlet.java
+services/ride/src/main/java/ru/itis/servlet/RideServlet.java
+services/ride/src/main/java/ru/itis/util/BrowserNavigation.java
+services/scooter/src/main/java/ru/itis/filter/AuthFilter.java
+services/scooter/src/main/java/ru/itis/util/BrowserNavigation.java
+services/user/src/main/java/ru/scooter/user/filter/ErrorFilter.java
+services/user/src/main/java/ru/scooter/user/util/BrowserNavigation.java
+services/user/src/main/java/ru/scooter/user/util/Validation.java
+src/main/java/bff/filter/JwtAuthFilter.java
+src/main/java/bff/service/RideService.java
+src/main/java/bff/service/impl/RegistrationRules.java
+src/main/java/bff/service/impl/RideServiceRestImpl.java
+src/main/java/bff/servlet/AuthEntryServlet.java
+src/main/java/bff/servlet/FrontendConfigServlet.java
+src/main/java/bff/servlet/PublicReviewProxyServlet.java
+src/main/java/bff/servlet/RideProxyServlet.java
+src/main/java/bff/web/BrowserNavigation.java
+src/main/webapp/frontend/account.css
+src/main/webapp/frontend/account.js
+src/main/webapp/frontend/api.js
+src/main/webapp/frontend/script.js
+src/main/webapp/frontend/style.css
+src/main/webapp/index.jsp
+src/main/webapp/login.jsp
+
+Последняя версия требует пересборки всех шести приложений. Свою local-run сохранить.
+Новой SQL-миграции для публичной ленты/навигации нет; прежняя 002_reviews.sql для отзывов обязательна.
+См. START_TEST_STAND.md и ADMIN_LOGIN.md.
