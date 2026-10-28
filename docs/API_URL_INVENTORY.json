@@ -1,0 +1,783 @@
+{
+  "revision": "4f64344",
+  "ports": {
+    "BFF": 8080,
+    "User": 8081,
+    "Moderation": 8082,
+    "Scooter": 8083,
+    "Ride": 8084,
+    "Documents": 8085
+  },
+  "endpoints": [
+    {
+      "id": "E001",
+      "service": "BFF",
+      "method": "POST",
+      "url": "http://localhost:8080/api/auth/register",
+      "auth": "Нет",
+      "body": {
+        "login": "{{loginA}}",
+        "password": "Check-password-2026!",
+        "fullName": "Иван Петров Иванович",
+        "birthDate": "2000-05-17"
+      },
+      "status": 201,
+      "expected": "Создан USER, пароль/hash не возвращаются; не автоматический вход",
+      "pre": "Свободный loginA",
+      "source": "src/main/java/bff/servlet/AuthServlet.java"
+    },
+    {
+      "id": "E002",
+      "service": "BFF",
+      "method": "POST",
+      "url": "http://localhost:8080/api/auth/login",
+      "auth": "Нет",
+      "body": {
+        "login": "{{loginA}}",
+        "password": "Check-password-2026!"
+      },
+      "status": 200,
+      "expected": "accessToken, expiresInSeconds, user; сохранить tokenA и userA; BFF также создаёт HttpOnly JSESSIONID",
+      "pre": "Уже зарегистрирован loginA",
+      "source": "src/main/java/bff/servlet/AuthServlet.java"
+    },
+    {
+      "id": "E003",
+      "service": "BFF",
+      "method": "POST",
+      "url": "http://localhost:8080/api/auth/logout",
+      "auth": "A / сессия / без токена",
+      "body": null,
+      "status": 204,
+      "expected": "Текущий JWT отозван; BFF-сессия удалена, если вызван BFF",
+      "pre": "Выполнять в конце сценария, дальше нужен новый вход",
+      "source": "src/main/java/bff/servlet/LogoutServlet.java"
+    },
+    {
+      "id": "E004",
+      "service": "User",
+      "method": "POST",
+      "url": "http://localhost:8081/api/users/register",
+      "auth": "Нет",
+      "body": {
+        "login": "{{loginA}}",
+        "password": "Check-password-2026!",
+        "fullName": "Иван Петров Иванович",
+        "birthDate": "2000-05-17"
+      },
+      "status": 201,
+      "expected": "Создан USER, пароль/hash не возвращаются; не автоматический вход",
+      "pre": "Свободный loginA",
+      "source": "services/user/src/main/java/ru/scooter/user/servlet/RegisterServlet.java"
+    },
+    {
+      "id": "E005",
+      "service": "User",
+      "method": "POST",
+      "url": "http://localhost:8081/api/users/login",
+      "auth": "Нет",
+      "body": {
+        "login": "{{loginA}}",
+        "password": "Check-password-2026!"
+      },
+      "status": 200,
+      "expected": "accessToken, expiresInSeconds, user; сохранить tokenA и userA; BFF также создаёт HttpOnly JSESSIONID",
+      "pre": "Уже зарегистрирован loginA",
+      "source": "services/user/src/main/java/ru/scooter/user/servlet/LoginServlet.java"
+    },
+    {
+      "id": "E006",
+      "service": "User",
+      "method": "POST",
+      "url": "http://localhost:8081/api/users/logout",
+      "auth": "A",
+      "body": null,
+      "status": 204,
+      "expected": "Текущий JWT отозван; BFF-сессия удалена, если вызван BFF",
+      "pre": "Выполнять в конце сценария, дальше нужен новый вход",
+      "source": "services/user/src/main/java/ru/scooter/user/servlet/LogoutServlet.java"
+    },
+    {
+      "id": "E007",
+      "service": "BFF",
+      "method": "GET",
+      "url": "http://localhost:8080/api/users/exists?login={{loginA}}",
+      "auth": "Нет",
+      "body": null,
+      "status": 200,
+      "expected": "{\"exists\":true}; новый незанятый логин → false",
+      "pre": "",
+      "source": "src/main/java/bff/servlet/UserProxyServlet.java"
+    },
+    {
+      "id": "E008",
+      "service": "BFF",
+      "method": "GET",
+      "url": "http://localhost:8080/api/users/me",
+      "auth": "A",
+      "body": null,
+      "status": 200,
+      "expected": "Профиль A, роль, дата рождения и актуальный blocked",
+      "pre": "",
+      "source": "src/main/java/bff/servlet/UserProxyServlet.java"
+    },
+    {
+      "id": "E009",
+      "service": "User",
+      "method": "GET",
+      "url": "http://localhost:8081/api/users/exists?login={{loginA}}",
+      "auth": "Нет",
+      "body": null,
+      "status": 200,
+      "expected": "{\"exists\":true}; новый незанятый логин → false",
+      "pre": "",
+      "source": "services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
+    },
+    {
+      "id": "E010",
+      "service": "User",
+      "method": "GET",
+      "url": "http://localhost:8081/api/users/me",
+      "auth": "A",
+      "body": null,
+      "status": 200,
+      "expected": "Профиль A, роль, дата рождения и актуальный blocked",
+      "pre": "",
+      "source": "services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
+    },
+    {
+      "id": "E011",
+      "service": "BFF",
+      "method": "GET",
+      "url": "http://localhost:8080/api/config",
+      "auth": "A",
+      "body": null,
+      "status": 200,
+      "expected": "moderationPanelUrl=http://localhost:8082/admin/users.html",
+      "pre": "",
+      "source": "src/main/java/bff/servlet/FrontendConfigServlet.java"
+    },
+    {
+      "id": "E012",
+      "service": "BFF",
+      "method": "GET",
+      "url": "http://localhost:8080/api/rates",
+      "auth": "A",
+      "body": null,
+      "status": 200,
+      "expected": "Активные тарифы, default, валюта, paymentMode; базовый 50 + 8/начатая минута",
+      "pre": "",
+      "source": "src/main/java/bff/servlet/RateProxyServlet.java"
+    },
+    {
+      "id": "E013",
+      "service": "Ride",
+      "method": "GET",
+      "url": "http://localhost:8084/api/rates",
+      "auth": "A",
+      "body": null,
+      "status": 200,
+      "expected": "Активные тарифы, default, валюта, paymentMode; базовый 50 + 8/начатая минута",
+      "pre": "",
+      "source": "services/ride/src/main/java/ru/itis/servlet/RateServlet.java"
+    },
+    {
+      "id": "E014",
+      "service": "BFF",
+      "method": "GET",
+      "url": "http://localhost:8080/api/scooters",
+      "auth": "A",
+      "body": null,
+      "status": 200,
+      "expected": "Настоящий каталог, все статусы; удалённых нет",
+      "pre": "",
+      "source": "src/main/java/bff/servlet/ScooterProxyServlet.java"
+    },
+    {
+      "id": "E015",
+      "service": "BFF",
+      "method": "POST",
+      "url": "http://localhost:8080/api/scooters/nearest",
+      "auth": "A",
+      "body": {
+        "posX": 37.618423,
+        "posY": 55.751244
+      },
+      "status": 200,
+      "expected": "Только READY; расстояния в метрах, по возрастанию; X=долгота, Y=широта",
+      "pre": "",
+      "source": "src/main/java/bff/servlet/ScooterProxyServlet.java"
+    },
+    {
+      "id": "E016",
+      "service": "BFF",
+      "method": "GET",
+      "url": "http://localhost:8080/api/scooters/{{plate}}",
+      "auth": "A",
+      "body": null,
+      "status": 200,
+      "expected": "Карточка существующего самоката",
+      "pre": "plate взять из реального каталога",
+      "source": "src/main/java/bff/servlet/ScooterProxyServlet.java"
+    },
+    {
+      "id": "E017",
+      "service": "Scooter",
+      "method": "GET",
+      "url": "http://localhost:8083/api/scooters",
+      "auth": "A",
+      "body": null,
+      "status": 200,
+      "expected": "Настоящий каталог, все статусы; удалённых нет",
+      "pre": "",
+      "source": "services/scooter/src/main/java/ru/itis/servlet/ScooterServlet.java"
+    },
+    {
+      "id": "E018",
+      "service": "Scooter",
+      "method": "POST",
+      "url": "http://localhost:8083/api/scooters/nearest",
+      "auth": "A",
+      "body": {
+        "posX": 37.618423,
+        "posY": 55.751244
+      },
+      "status": 200,
+      "expected": "Только READY; расстояния в метрах, по возрастанию; X=долгота, Y=широта",
+      "pre": "",
+      "source": "services/scooter/src/main/java/ru/itis/servlet/ScooterServlet.java"
+    },
+    {
+      "id": "E019",
+      "service": "Scooter",
+      "method": "GET",
+      "url": "http://localhost:8083/api/scooters/{{plate}}",
+      "auth": "A",
+      "body": null,
+      "status": 200,
+      "expected": "Карточка существующего самоката",
+      "pre": "plate взять из реального каталога",
+      "source": "services/scooter/src/main/java/ru/itis/servlet/ScooterServlet.java"
+    },
+    {
+      "id": "E020",
+      "service": "BFF",
+      "method": "GET",
+      "url": "http://localhost:8080/api/rides",
+      "auth": "A",
+      "body": null,
+      "status": 200,
+      "expected": "Только история A; статусы ACTIVE/FINISHED/PAID, review=null либо объект",
+      "pre": "",
+      "source": "src/main/java/bff/servlet/RideProxyServlet.java"
+    },
+    {
+      "id": "E021",
+      "service": "BFF",
+      "method": "POST",
+      "url": "http://localhost:8080/api/rides",
+      "auth": "A",
+      "body": {
+        "numberPlate": "{{plate}}",
+        "posX": 37.618423,
+        "posY": 55.751244
+      },
+      "status": 201,
+      "expected": "Начата одна ACTIVE-поездка, самокат IN_RIDE; сохранить rideId",
+      "pre": "READY plate; нет другой активной поездки у A/самоката; A не заблокирован",
+      "source": "src/main/java/bff/servlet/RideProxyServlet.java"
+    },
+    {
+      "id": "E022",
+      "service": "BFF",
+      "method": "PUT",
+      "url": "http://localhost:8080/api/rides/{{rideId}}/position",
+      "auth": "A",
+      "body": {
+        "posX": 37.618423,
+        "posY": 55.751244
+      },
+      "status": 204,
+      "expected": "Сохранена последняя позиция и обновлена позиция занятого самоката",
+      "pre": "Своя ACTIVE-поездка",
+      "source": "src/main/java/bff/servlet/RideProxyServlet.java"
+    },
+    {
+      "id": "E023",
+      "service": "BFF",
+      "method": "PUT",
+      "url": "http://localhost:8080/api/rides/{{rideId}}/finish",
+      "auth": "A",
+      "body": {
+        "posX": 37.618423,
+        "posY": 55.751244
+      },
+      "status": 200,
+      "expected": "FINISHED, конечные координаты, длительность и сумма; самокат освобождён",
+      "pre": "Своя ACTIVE-поездка; повтор допустим с теми же координатами",
+      "source": "src/main/java/bff/servlet/RideProxyServlet.java"
+    },
+    {
+      "id": "E024",
+      "service": "BFF",
+      "method": "PUT",
+      "url": "http://localhost:8080/api/rides/{{rideId}}/review",
+      "auth": "A",
+      "body": {
+        "rideRating": 5,
+        "scooterRating": 4,
+        "rideComment": "Хорошая поездка",
+        "scooterComment": "Удобный самокат"
+      },
+      "status": 200,
+      "expected": "Отзыв сохранён в Ride DB и возвращается в истории; повтор изменяет его",
+      "pre": "Своя FINISHED или PAID-поездка",
+      "source": "src/main/java/bff/servlet/RideProxyServlet.java"
+    },
+    {
+      "id": "E025",
+      "service": "BFF",
+      "method": "POST",
+      "url": "http://localhost:8080/api/rides/{{rideId}}/pay",
+      "auth": "A",
+      "body": {},
+      "status": 200,
+      "expected": "PAID и paidAt, paymentMode=EDUCATIONAL; сумма не меняется; повтор идемпотентен",
+      "pre": "Своя FINISHED-поездка, PAYMENT_MODE=educational",
+      "source": "src/main/java/bff/servlet/RideProxyServlet.java"
+    },
+    {
+      "id": "E026",
+      "service": "Ride",
+      "method": "GET",
+      "url": "http://localhost:8084/api/rides",
+      "auth": "A",
+      "body": null,
+      "status": 200,
+      "expected": "Только история A; статусы ACTIVE/FINISHED/PAID, review=null либо объект",
+      "pre": "",
+      "source": "services/ride/src/main/java/ru/itis/servlet/RideServlet.java"
+    },
+    {
+      "id": "E027",
+      "service": "Ride",
+      "method": "POST",
+      "url": "http://localhost:8084/api/rides",
+      "auth": "A",
+      "body": {
+        "numberPlate": "{{plate}}",
+        "posX": 37.618423,
+        "posY": 55.751244
+      },
+      "status": 201,
+      "expected": "Начата одна ACTIVE-поездка, самокат IN_RIDE; сохранить rideId",
+      "pre": "READY plate; нет другой активной поездки у A/самоката; A не заблокирован",
+      "source": "services/ride/src/main/java/ru/itis/servlet/RideServlet.java"
+    },
+    {
+      "id": "E028",
+      "service": "Ride",
+      "method": "PUT",
+      "url": "http://localhost:8084/api/rides/{{rideId}}/position",
+      "auth": "A",
+      "body": {
+        "posX": 37.618423,
+        "posY": 55.751244
+      },
+      "status": 204,
+      "expected": "Сохранена последняя позиция и обновлена позиция занятого самоката",
+      "pre": "Своя ACTIVE-поездка",
+      "source": "services/ride/src/main/java/ru/itis/servlet/RideServlet.java"
+    },
+    {
+      "id": "E029",
+      "service": "Ride",
+      "method": "PUT",
+      "url": "http://localhost:8084/api/rides/{{rideId}}/finish",
+      "auth": "A",
+      "body": {
+        "posX": 37.618423,
+        "posY": 55.751244
+      },
+      "status": 200,
+      "expected": "FINISHED, конечные координаты, длительность и сумма; самокат освобождён",
+      "pre": "Своя ACTIVE-поездка; повтор допустим с теми же координатами",
+      "source": "services/ride/src/main/java/ru/itis/servlet/RideServlet.java"
+    },
+    {
+      "id": "E030",
+      "service": "Ride",
+      "method": "PUT",
+      "url": "http://localhost:8084/api/rides/{{rideId}}/review",
+      "auth": "A",
+      "body": {
+        "rideRating": 5,
+        "scooterRating": 4,
+        "rideComment": "Хорошая поездка",
+        "scooterComment": "Удобный самокат"
+      },
+      "status": 200,
+      "expected": "Отзыв сохранён в Ride DB и возвращается в истории; повтор изменяет его",
+      "pre": "Своя FINISHED или PAID-поездка",
+      "source": "services/ride/src/main/java/ru/itis/servlet/RideServlet.java"
+    },
+    {
+      "id": "E031",
+      "service": "Ride",
+      "method": "POST",
+      "url": "http://localhost:8084/api/rides/{{rideId}}/pay",
+      "auth": "A",
+      "body": {},
+      "status": 200,
+      "expected": "PAID и paidAt, paymentMode=EDUCATIONAL; сумма не меняется; повтор идемпотентен",
+      "pre": "Своя FINISHED-поездка, PAYMENT_MODE=educational",
+      "source": "services/ride/src/main/java/ru/itis/servlet/RideServlet.java"
+    },
+    {
+      "id": "E032",
+      "service": "BFF",
+      "method": "POST",
+      "url": "http://localhost:8080/api/documents/generate",
+      "auth": "A",
+      "body": {
+        "docType": "RIDE_PAYMENT",
+        "sourceId": "{{rideId}}"
+      },
+      "status": 200,
+      "expected": "Настоящий PDF, application/pdf, %PDF-, корректная кириллица; метаданные GENERATED",
+      "pre": "Для чека: своя PAID-поездка; другие типы и тела см. ниже",
+      "source": "src/main/java/bff/servlet/DocumentProxyServlet.java"
+    },
+    {
+      "id": "E033",
+      "service": "BFF",
+      "method": "GET",
+      "url": "http://localhost:8080/api/documents?limit=50&offset=0",
+      "auth": "A",
+      "body": null,
+      "status": 200,
+      "expected": "Только свои неудалённые метаданные, максимум limit; сохранить documentId",
+      "pre": "",
+      "source": "src/main/java/bff/servlet/DocumentProxyServlet.java"
+    },
+    {
+      "id": "E034",
+      "service": "BFF",
+      "method": "GET",
+      "url": "http://localhost:8080/api/documents/{{documentId}}",
+      "auth": "A",
+      "body": null,
+      "status": 200,
+      "expected": "Метаданные существующего своего документа",
+      "pre": "",
+      "source": "src/main/java/bff/servlet/DocumentProxyServlet.java"
+    },
+    {
+      "id": "E035",
+      "service": "BFF",
+      "method": "GET",
+      "url": "http://localhost:8080/api/documents/{{documentId}}/download",
+      "auth": "A",
+      "body": null,
+      "status": 200,
+      "expected": "PDF заново построен из сохранённого снимка данных, не JSON и не HTML",
+      "pre": "Свой GENERATED-документ",
+      "source": "src/main/java/bff/servlet/DocumentProxyServlet.java"
+    },
+    {
+      "id": "E036",
+      "service": "BFF",
+      "method": "DELETE",
+      "url": "http://localhost:8080/api/documents/{{documentId}}",
+      "auth": "A",
+      "body": null,
+      "status": 204,
+      "expected": "Мягкое удаление, повтор DELETE тоже 204; GET/download затем 404",
+      "pre": "Выполнять после скачивания и проверки снимка",
+      "source": "src/main/java/bff/servlet/DocumentProxyServlet.java"
+    },
+    {
+      "id": "E037",
+      "service": "Documents",
+      "method": "POST",
+      "url": "http://localhost:8085/api/documents/generate",
+      "auth": "A",
+      "body": {
+        "userId": "{{userA}}",
+        "docType": "RIDE_PAYMENT",
+        "sourceId": "{{rideId}}"
+      },
+      "status": 200,
+      "expected": "Настоящий PDF, application/pdf, %PDF-, корректная кириллица; метаданные GENERATED",
+      "pre": "Для чека: своя PAID-поездка; другие типы и тела см. ниже",
+      "source": "services/documents/src/main/java/ru/kicksharing/documents/servlet/DocumentServlet.java"
+    },
+    {
+      "id": "E038",
+      "service": "Documents",
+      "method": "GET",
+      "url": "http://localhost:8085/api/documents?limit=50&offset=0",
+      "auth": "A",
+      "body": null,
+      "status": 200,
+      "expected": "Только свои неудалённые метаданные, максимум limit; сохранить documentId",
+      "pre": "",
+      "source": "services/documents/src/main/java/ru/kicksharing/documents/servlet/DocumentServlet.java"
+    },
+    {
+      "id": "E039",
+      "service": "Documents",
+      "method": "GET",
+      "url": "http://localhost:8085/api/documents/{{documentId}}",
+      "auth": "A",
+      "body": null,
+      "status": 200,
+      "expected": "Метаданные существующего своего документа",
+      "pre": "",
+      "source": "services/documents/src/main/java/ru/kicksharing/documents/servlet/DocumentServlet.java"
+    },
+    {
+      "id": "E040",
+      "service": "Documents",
+      "method": "GET",
+      "url": "http://localhost:8085/api/documents/{{documentId}}/download",
+      "auth": "A",
+      "body": null,
+      "status": 200,
+      "expected": "PDF заново построен из сохранённого снимка данных, не JSON и не HTML",
+      "pre": "Свой GENERATED-документ",
+      "source": "services/documents/src/main/java/ru/kicksharing/documents/servlet/DocumentServlet.java"
+    },
+    {
+      "id": "E041",
+      "service": "Documents",
+      "method": "DELETE",
+      "url": "http://localhost:8085/api/documents/{{documentId}}",
+      "auth": "A",
+      "body": null,
+      "status": 204,
+      "expected": "Мягкое удаление, повтор DELETE тоже 204; GET/download затем 404",
+      "pre": "Выполнять после скачивания и проверки снимка",
+      "source": "services/documents/src/main/java/ru/kicksharing/documents/servlet/DocumentServlet.java"
+    },
+    {
+      "id": "E042",
+      "service": "User",
+      "method": "GET",
+      "url": "http://localhost:8081/api/users/validate",
+      "auth": "A",
+      "body": null,
+      "status": 204,
+      "expected": "204, без тела, токен действителен; не обращается к Moderation",
+      "pre": "",
+      "source": "services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
+    },
+    {
+      "id": "E043",
+      "service": "User",
+      "method": "GET",
+      "url": "http://localhost:8081/api/users",
+      "auth": "ADMIN",
+      "body": null,
+      "status": 200,
+      "expected": "Список активных пользователей: id, login, fullName",
+      "pre": "",
+      "source": "services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
+    },
+    {
+      "id": "E044",
+      "service": "User",
+      "method": "GET",
+      "url": "http://localhost:8081/api/users/{{userA}}",
+      "auth": "A / ADMIN",
+      "body": null,
+      "status": 200,
+      "expected": "Полный профиль A; USER B не имеет доступа",
+      "pre": "",
+      "source": "services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
+    },
+    {
+      "id": "E045",
+      "service": "User",
+      "method": "GET",
+      "url": "http://localhost:8081/api/users/{{userA}}/blocked",
+      "auth": "A / ADMIN",
+      "body": null,
+      "status": 200,
+      "expected": "{\"blocked\":false/true}",
+      "pre": "",
+      "source": "services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
+    },
+    {
+      "id": "E046",
+      "service": "User",
+      "method": "GET",
+      "url": "http://localhost:8081/api/users/blocked?limit=50&offset=0",
+      "auth": "ADMIN",
+      "body": null,
+      "status": 200,
+      "expected": "Список блокировок из Moderation",
+      "pre": "",
+      "source": "services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
+    },
+    {
+      "id": "E047",
+      "service": "User",
+      "method": "GET",
+      "url": "http://localhost:8081/api/users/reasons",
+      "auth": "ADMIN",
+      "body": null,
+      "status": 200,
+      "expected": "Справочник причин: reasonType, description, durationSeconds",
+      "pre": "",
+      "source": "services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
+    },
+    {
+      "id": "E048",
+      "service": "User",
+      "method": "POST",
+      "url": "http://localhost:8081/api/users/{{userA}}/ban",
+      "auth": "ADMIN",
+      "body": {
+        "reason": "{{reason}}"
+      },
+      "status": 200,
+      "expected": "Актуальный BlockStatus; повтор не создаёт вторую блокировку/не продлевает старую",
+      "pre": "Существующий тестовый userA; reason взять из справочника",
+      "source": "services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
+    },
+    {
+      "id": "E049",
+      "service": "User",
+      "method": "POST",
+      "url": "http://localhost:8081/api/users/{{userA}}/unban",
+      "auth": "ADMIN",
+      "body": null,
+      "status": 200,
+      "expected": "blocked=false; повтор допустим",
+      "pre": "Существующий тестовый userA; reason взять из справочника",
+      "source": "services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
+    },
+    {
+      "id": "E050",
+      "service": "Moderation",
+      "method": "GET",
+      "url": "http://localhost:8082/api/moderation/users/{{userA}}/status",
+      "auth": "A / ADMIN",
+      "body": null,
+      "status": 200,
+      "expected": "BlockStatus: userId, blocked, reasonType, reason, blockedAt, blockedUntil",
+      "pre": "",
+      "source": "services/moderation/src/main/java/ru/itis/controller/ModerationServlet.java"
+    },
+    {
+      "id": "E051",
+      "service": "Moderation",
+      "method": "GET",
+      "url": "http://localhost:8082/api/moderation/reasons",
+      "auth": "ADMIN",
+      "body": null,
+      "status": 200,
+      "expected": "Справочник причин",
+      "pre": "",
+      "source": "services/moderation/src/main/java/ru/itis/controller/ModerationServlet.java"
+    },
+    {
+      "id": "E052",
+      "service": "Moderation",
+      "method": "GET",
+      "url": "http://localhost:8082/api/moderation/users?blocked=true&limit=50&offset=0",
+      "auth": "ADMIN",
+      "body": null,
+      "status": 200,
+      "expected": "Список блокировок",
+      "pre": "",
+      "source": "services/moderation/src/main/java/ru/itis/controller/ModerationServlet.java"
+    },
+    {
+      "id": "E053",
+      "service": "Moderation",
+      "method": "POST",
+      "url": "http://localhost:8082/api/moderation/users/{{userA}}/ban",
+      "auth": "ADMIN",
+      "body": {
+        "reason": "{{reason}}"
+      },
+      "status": 200,
+      "expected": "BlockStatus; blocked=true",
+      "pre": "Использовать реальный тестовый userA. Прямой Moderation не проверяет наличие UUID в User",
+      "source": "services/moderation/src/main/java/ru/itis/controller/ModerationServlet.java"
+    },
+    {
+      "id": "E054",
+      "service": "Moderation",
+      "method": "POST",
+      "url": "http://localhost:8082/api/moderation/users/{{userA}}/unban",
+      "auth": "ADMIN",
+      "body": null,
+      "status": 200,
+      "expected": "BlockStatus; blocked=false",
+      "pre": "Использовать реальный тестовый userA. Прямой Moderation не проверяет наличие UUID в User",
+      "source": "services/moderation/src/main/java/ru/itis/controller/ModerationServlet.java"
+    },
+    {
+      "id": "E055",
+      "service": "Ride",
+      "method": "GET",
+      "url": "http://localhost:8084/api/rides/{{rideId}}",
+      "auth": "A",
+      "body": null,
+      "status": 200,
+      "expected": "Одна своя поездка; B → 403",
+      "pre": "",
+      "source": "services/ride/src/main/java/ru/itis/servlet/RideServlet.java"
+    },
+    {
+      "id": "E056",
+      "service": "Scooter",
+      "method": "POST",
+      "url": "http://localhost:8083/api/scooters/{{internalPlate}}/reserve",
+      "auth": "SERVICE_KEY",
+      "body": {
+        "rideId": "{{internalRideId}}",
+        "userId": "{{userA}}"
+      },
+      "status": 200,
+      "expected": "Резервирование",
+      "pre": "Только отдельный тестовый самокат и отдельный UUID, не связанный с настоящей Ride-поездкой; порядок reserve → position → release",
+      "source": "services/scooter/src/main/java/ru/itis/servlet/ScooterServlet.java"
+    },
+    {
+      "id": "E057",
+      "service": "Scooter",
+      "method": "POST",
+      "url": "http://localhost:8083/api/scooters/{{internalPlate}}/position",
+      "auth": "SERVICE_KEY",
+      "body": {
+        "rideId": "{{internalRideId}}",
+        "posX": 37.618423,
+        "posY": 55.751244
+      },
+      "status": 200,
+      "expected": "Позиция обновлена",
+      "pre": "Только отдельный тестовый самокат и отдельный UUID, не связанный с настоящей Ride-поездкой; порядок reserve → position → release",
+      "source": "services/scooter/src/main/java/ru/itis/servlet/ScooterServlet.java"
+    },
+    {
+      "id": "E058",
+      "service": "Scooter",
+      "method": "POST",
+      "url": "http://localhost:8083/api/scooters/{{internalPlate}}/release",
+      "auth": "SERVICE_KEY",
+      "body": {
+        "rideId": "{{internalRideId}}",
+        "posX": 37.618423,
+        "posY": 55.751244
+      },
+      "status": 200,
+      "expected": "Резервация закрыта, самокат освобождён",
+      "pre": "Только отдельный тестовый самокат и отдельный UUID, не связанный с настоящей Ride-поездкой; порядок reserve → position → release",
+      "source": "services/scooter/src/main/java/ru/itis/servlet/ScooterServlet.java"
+    }
+  ]
+}

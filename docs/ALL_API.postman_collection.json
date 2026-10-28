@@ -1,0 +1,1884 @@
+{
+  "info": {
+    "name": "Kicksharing — все 58 API (ручной справочник)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "По коду 4f64344. Используйте docs/FULL_API_URL_CHECKLIST.md. Ручной запуск отдельных запросов по предусловиям, не автоматический сквозной Runner. Заполните коллекционные переменные. USER_BLOCKED/USER_HISTORY — варианты тела generate из инструкции. Logout в конце. Реальные ключи/токены в репозиторий не сохраняйте."
+  },
+  "variable": [
+    {
+      "key": "bff",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "user",
+      "value": "http://localhost:8081",
+      "type": "string"
+    },
+    {
+      "key": "moderation",
+      "value": "http://localhost:8082",
+      "type": "string"
+    },
+    {
+      "key": "scooter",
+      "value": "http://localhost:8083",
+      "type": "string"
+    },
+    {
+      "key": "ride",
+      "value": "http://localhost:8084",
+      "type": "string"
+    },
+    {
+      "key": "documents",
+      "value": "http://localhost:8085",
+      "type": "string"
+    },
+    {
+      "key": "loginA",
+      "value": "check.user.a.CHANGE_ME",
+      "type": "string"
+    },
+    {
+      "key": "loginB",
+      "value": "check.user.b.CHANGE_ME",
+      "type": "string"
+    },
+    {
+      "key": "loginAdmin",
+      "value": "admin.check",
+      "type": "string"
+    },
+    {
+      "key": "tokenA",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tokenB",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tokenAdmin",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userA",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userB",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userAdmin",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "plate",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "internalPlate",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "internalRideId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "rideId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "documentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "reason",
+      "value": "PARKING_FORBIDDEN_ZONE",
+      "type": "string"
+    },
+    {
+      "key": "serviceKey",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "from",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "to",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "BFF",
+      "item": [
+        {
+          "name": "E001 POST /api/auth/register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bff}}/api/auth/register",
+            "description": "Свободный loginA\nСоздан USER, пароль/hash не возвращаются; не автоматический вход\nИсточник: src/main/java/bff/servlet/AuthServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{loginA}}\",\n  \"password\": \"Check-password-2026!\",\n  \"fullName\": \"Иван Петров Иванович\",\n  \"birthDate\": \"2000-05-17\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E002 POST /api/auth/login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bff}}/api/auth/login",
+            "description": "Уже зарегистрирован loginA\naccessToken, expiresInSeconds, user; сохранить tokenA и userA; BFF также создаёт HttpOnly JSESSIONID\nИсточник: src/main/java/bff/servlet/AuthServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{loginA}}\",\n  \"password\": \"Check-password-2026!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E003 POST /api/auth/logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{bff}}/api/auth/logout",
+            "description": "Выполнять в конце сценария, дальше нужен новый вход\nТекущий JWT отозван; BFF-сессия удалена, если вызван BFF\nИсточник: src/main/java/bff/servlet/LogoutServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E007 GET /api/users/exists?login={{loginA}}",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{bff}}/api/users/exists?login={{loginA}}",
+            "description": "\n{\"exists\":true}; новый незанятый логин → false\nИсточник: src/main/java/bff/servlet/UserProxyServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E008 GET /api/users/me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{bff}}/api/users/me",
+            "description": "\nПрофиль A, роль, дата рождения и актуальный blocked\nИсточник: src/main/java/bff/servlet/UserProxyServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E011 GET /api/config",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{bff}}/api/config",
+            "description": "\nmoderationPanelUrl=http://localhost:8082/admin/users.html\nИсточник: src/main/java/bff/servlet/FrontendConfigServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E012 GET /api/rates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{bff}}/api/rates",
+            "description": "\nАктивные тарифы, default, валюта, paymentMode; базовый 50 + 8/начатая минута\nИсточник: src/main/java/bff/servlet/RateProxyServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E014 GET /api/scooters",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{bff}}/api/scooters",
+            "description": "\nНастоящий каталог, все статусы; удалённых нет\nИсточник: src/main/java/bff/servlet/ScooterProxyServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E015 POST /api/scooters/nearest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bff}}/api/scooters/nearest",
+            "description": "\nТолько READY; расстояния в метрах, по возрастанию; X=долгота, Y=широта\nИсточник: src/main/java/bff/servlet/ScooterProxyServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"posX\": 37.618423,\n  \"posY\": 55.751244\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E016 GET /api/scooters/{{plate}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{bff}}/api/scooters/{{plate}}",
+            "description": "plate взять из реального каталога\nКарточка существующего самоката\nИсточник: src/main/java/bff/servlet/ScooterProxyServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E020 GET /api/rides",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{bff}}/api/rides",
+            "description": "\nТолько история A; статусы ACTIVE/FINISHED/PAID, review=null либо объект\nИсточник: src/main/java/bff/servlet/RideProxyServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E021 POST /api/rides",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bff}}/api/rides",
+            "description": "READY plate; нет другой активной поездки у A/самоката; A не заблокирован\nНачата одна ACTIVE-поездка, самокат IN_RIDE; сохранить rideId\nИсточник: src/main/java/bff/servlet/RideProxyServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numberPlate\": \"{{plate}}\",\n  \"posX\": 37.618423,\n  \"posY\": 55.751244\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E022 PUT /api/rides/{{rideId}}/position",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bff}}/api/rides/{{rideId}}/position",
+            "description": "Своя ACTIVE-поездка\nСохранена последняя позиция и обновлена позиция занятого самоката\nИсточник: src/main/java/bff/servlet/RideProxyServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"posX\": 37.618423,\n  \"posY\": 55.751244\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E023 PUT /api/rides/{{rideId}}/finish",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bff}}/api/rides/{{rideId}}/finish",
+            "description": "Своя ACTIVE-поездка; повтор допустим с теми же координатами\nFINISHED, конечные координаты, длительность и сумма; самокат освобождён\nИсточник: src/main/java/bff/servlet/RideProxyServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"posX\": 37.618423,\n  \"posY\": 55.751244\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E024 PUT /api/rides/{{rideId}}/review",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bff}}/api/rides/{{rideId}}/review",
+            "description": "Своя FINISHED или PAID-поездка\nОтзыв сохранён в Ride DB и возвращается в истории; повтор изменяет его\nИсточник: src/main/java/bff/servlet/RideProxyServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rideRating\": 5,\n  \"scooterRating\": 4,\n  \"rideComment\": \"Хорошая поездка\",\n  \"scooterComment\": \"Удобный самокат\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E025 POST /api/rides/{{rideId}}/pay",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bff}}/api/rides/{{rideId}}/pay",
+            "description": "Своя FINISHED-поездка, PAYMENT_MODE=educational\nPAID и paidAt, paymentMode=EDUCATIONAL; сумма не меняется; повтор идемпотентен\nИсточник: src/main/java/bff/servlet/RideProxyServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E032 POST /api/documents/generate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{bff}}/api/documents/generate",
+            "description": "Для чека: своя PAID-поездка; другие типы и тела см. ниже\nНастоящий PDF, application/pdf, %PDF-, корректная кириллица; метаданные GENERATED\nИсточник: src/main/java/bff/servlet/DocumentProxyServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"docType\": \"RIDE_PAYMENT\",\n  \"sourceId\": \"{{rideId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E033 GET /api/documents?limit=50&offset=0",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{bff}}/api/documents?limit=50&offset=0",
+            "description": "\nТолько свои неудалённые метаданные, максимум limit; сохранить documentId\nИсточник: src/main/java/bff/servlet/DocumentProxyServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E034 GET /api/documents/{{documentId}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{bff}}/api/documents/{{documentId}}",
+            "description": "\nМетаданные существующего своего документа\nИсточник: src/main/java/bff/servlet/DocumentProxyServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E035 GET /api/documents/{{documentId}}/download",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{bff}}/api/documents/{{documentId}}/download",
+            "description": "Свой GENERATED-документ\nPDF заново построен из сохранённого снимка данных, не JSON и не HTML\nИсточник: src/main/java/bff/servlet/DocumentProxyServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E036 DELETE /api/documents/{{documentId}}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{bff}}/api/documents/{{documentId}}",
+            "description": "Выполнять после скачивания и проверки снимка\nМягкое удаление, повтор DELETE тоже 204; GET/download затем 404\nИсточник: src/main/java/bff/servlet/DocumentProxyServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "E004 POST /api/users/register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{user}}/api/users/register",
+            "description": "Свободный loginA\nСоздан USER, пароль/hash не возвращаются; не автоматический вход\nИсточник: services/user/src/main/java/ru/scooter/user/servlet/RegisterServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{loginA}}\",\n  \"password\": \"Check-password-2026!\",\n  \"fullName\": \"Иван Петров Иванович\",\n  \"birthDate\": \"2000-05-17\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E005 POST /api/users/login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{user}}/api/users/login",
+            "description": "Уже зарегистрирован loginA\naccessToken, expiresInSeconds, user; сохранить tokenA и userA; BFF также создаёт HttpOnly JSESSIONID\nИсточник: services/user/src/main/java/ru/scooter/user/servlet/LoginServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"login\": \"{{loginA}}\",\n  \"password\": \"Check-password-2026!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E006 POST /api/users/logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{user}}/api/users/logout",
+            "description": "Выполнять в конце сценария, дальше нужен новый вход\nТекущий JWT отозван; BFF-сессия удалена, если вызван BFF\nИсточник: services/user/src/main/java/ru/scooter/user/servlet/LogoutServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E009 GET /api/users/exists?login={{loginA}}",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{user}}/api/users/exists?login={{loginA}}",
+            "description": "\n{\"exists\":true}; новый незанятый логин → false\nИсточник: services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E010 GET /api/users/me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{user}}/api/users/me",
+            "description": "\nПрофиль A, роль, дата рождения и актуальный blocked\nИсточник: services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E042 GET /api/users/validate",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{user}}/api/users/validate",
+            "description": "\n204, без тела, токен действителен; не обращается к Moderation\nИсточник: services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E043 GET /api/users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{user}}/api/users",
+            "description": "\nСписок активных пользователей: id, login, fullName\nИсточник: services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E044 GET /api/users/{{userA}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{user}}/api/users/{{userA}}",
+            "description": "\nПолный профиль A; USER B не имеет доступа\nИсточник: services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E045 GET /api/users/{{userA}}/blocked",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{user}}/api/users/{{userA}}/blocked",
+            "description": "\n{\"blocked\":false/true}\nИсточник: services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E046 GET /api/users/blocked?limit=50&offset=0",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{user}}/api/users/blocked?limit=50&offset=0",
+            "description": "\nСписок блокировок из Moderation\nИсточник: services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E047 GET /api/users/reasons",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{user}}/api/users/reasons",
+            "description": "\nСправочник причин: reasonType, description, durationSeconds\nИсточник: services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E048 POST /api/users/{{userA}}/ban",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{user}}/api/users/{{userA}}/ban",
+            "description": "Существующий тестовый userA; reason взять из справочника\nАктуальный BlockStatus; повтор не создаёт вторую блокировку/не продлевает старую\nИсточник: services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"{{reason}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E049 POST /api/users/{{userA}}/unban",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{user}}/api/users/{{userA}}/unban",
+            "description": "Существующий тестовый userA; reason взять из справочника\nblocked=false; повтор допустим\nИсточник: services/user/src/main/java/ru/scooter/user/servlet/UsersServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Moderation",
+      "item": [
+        {
+          "name": "E050 GET /api/moderation/users/{{userA}}/status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{moderation}}/api/moderation/users/{{userA}}/status",
+            "description": "\nBlockStatus: userId, blocked, reasonType, reason, blockedAt, blockedUntil\nИсточник: services/moderation/src/main/java/ru/itis/controller/ModerationServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E051 GET /api/moderation/reasons",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{moderation}}/api/moderation/reasons",
+            "description": "\nСправочник причин\nИсточник: services/moderation/src/main/java/ru/itis/controller/ModerationServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E052 GET /api/moderation/users?blocked=true&limit=50&offset=0",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{moderation}}/api/moderation/users?blocked=true&limit=50&offset=0",
+            "description": "\nСписок блокировок\nИсточник: services/moderation/src/main/java/ru/itis/controller/ModerationServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E053 POST /api/moderation/users/{{userA}}/ban",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{moderation}}/api/moderation/users/{{userA}}/ban",
+            "description": "Использовать реальный тестовый userA. Прямой Moderation не проверяет наличие UUID в User\nBlockStatus; blocked=true\nИсточник: services/moderation/src/main/java/ru/itis/controller/ModerationServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"{{reason}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E054 POST /api/moderation/users/{{userA}}/unban",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{moderation}}/api/moderation/users/{{userA}}/unban",
+            "description": "Использовать реальный тестовый userA. Прямой Moderation не проверяет наличие UUID в User\nBlockStatus; blocked=false\nИсточник: services/moderation/src/main/java/ru/itis/controller/ModerationServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Scooter",
+      "item": [
+        {
+          "name": "E017 GET /api/scooters",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{scooter}}/api/scooters",
+            "description": "\nНастоящий каталог, все статусы; удалённых нет\nИсточник: services/scooter/src/main/java/ru/itis/servlet/ScooterServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E018 POST /api/scooters/nearest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{scooter}}/api/scooters/nearest",
+            "description": "\nТолько READY; расстояния в метрах, по возрастанию; X=долгота, Y=широта\nИсточник: services/scooter/src/main/java/ru/itis/servlet/ScooterServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"posX\": 37.618423,\n  \"posY\": 55.751244\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E019 GET /api/scooters/{{plate}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{scooter}}/api/scooters/{{plate}}",
+            "description": "plate взять из реального каталога\nКарточка существующего самоката\nИсточник: services/scooter/src/main/java/ru/itis/servlet/ScooterServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E056 POST /api/scooters/{{internalPlate}}/reserve",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{serviceKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{scooter}}/api/scooters/{{internalPlate}}/reserve",
+            "description": "Только отдельный тестовый самокат и отдельный UUID, не связанный с настоящей Ride-поездкой; порядок reserve → position → release\nРезервирование\nИсточник: services/scooter/src/main/java/ru/itis/servlet/ScooterServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rideId\": \"{{internalRideId}}\",\n  \"userId\": \"{{userA}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E057 POST /api/scooters/{{internalPlate}}/position",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{serviceKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{scooter}}/api/scooters/{{internalPlate}}/position",
+            "description": "Только отдельный тестовый самокат и отдельный UUID, не связанный с настоящей Ride-поездкой; порядок reserve → position → release\nПозиция обновлена\nИсточник: services/scooter/src/main/java/ru/itis/servlet/ScooterServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rideId\": \"{{internalRideId}}\",\n  \"posX\": 37.618423,\n  \"posY\": 55.751244\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E058 POST /api/scooters/{{internalPlate}}/release",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{serviceKey}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{scooter}}/api/scooters/{{internalPlate}}/release",
+            "description": "Только отдельный тестовый самокат и отдельный UUID, не связанный с настоящей Ride-поездкой; порядок reserve → position → release\nРезервация закрыта, самокат освобождён\nИсточник: services/scooter/src/main/java/ru/itis/servlet/ScooterServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rideId\": \"{{internalRideId}}\",\n  \"posX\": 37.618423,\n  \"posY\": 55.751244\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ride",
+      "item": [
+        {
+          "name": "E013 GET /api/rates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{ride}}/api/rates",
+            "description": "\nАктивные тарифы, default, валюта, paymentMode; базовый 50 + 8/начатая минута\nИсточник: services/ride/src/main/java/ru/itis/servlet/RateServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E026 GET /api/rides",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{ride}}/api/rides",
+            "description": "\nТолько история A; статусы ACTIVE/FINISHED/PAID, review=null либо объект\nИсточник: services/ride/src/main/java/ru/itis/servlet/RideServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E027 POST /api/rides",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{ride}}/api/rides",
+            "description": "READY plate; нет другой активной поездки у A/самоката; A не заблокирован\nНачата одна ACTIVE-поездка, самокат IN_RIDE; сохранить rideId\nИсточник: services/ride/src/main/java/ru/itis/servlet/RideServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numberPlate\": \"{{plate}}\",\n  \"posX\": 37.618423,\n  \"posY\": 55.751244\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(201); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E028 PUT /api/rides/{{rideId}}/position",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{ride}}/api/rides/{{rideId}}/position",
+            "description": "Своя ACTIVE-поездка\nСохранена последняя позиция и обновлена позиция занятого самоката\nИсточник: services/ride/src/main/java/ru/itis/servlet/RideServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"posX\": 37.618423,\n  \"posY\": 55.751244\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E029 PUT /api/rides/{{rideId}}/finish",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{ride}}/api/rides/{{rideId}}/finish",
+            "description": "Своя ACTIVE-поездка; повтор допустим с теми же координатами\nFINISHED, конечные координаты, длительность и сумма; самокат освобождён\nИсточник: services/ride/src/main/java/ru/itis/servlet/RideServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"posX\": 37.618423,\n  \"posY\": 55.751244\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E030 PUT /api/rides/{{rideId}}/review",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{ride}}/api/rides/{{rideId}}/review",
+            "description": "Своя FINISHED или PAID-поездка\nОтзыв сохранён в Ride DB и возвращается в истории; повтор изменяет его\nИсточник: services/ride/src/main/java/ru/itis/servlet/RideServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rideRating\": 5,\n  \"scooterRating\": 4,\n  \"rideComment\": \"Хорошая поездка\",\n  \"scooterComment\": \"Удобный самокат\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E031 POST /api/rides/{{rideId}}/pay",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{ride}}/api/rides/{{rideId}}/pay",
+            "description": "Своя FINISHED-поездка, PAYMENT_MODE=educational\nPAID и paidAt, paymentMode=EDUCATIONAL; сумма не меняется; повтор идемпотентен\nИсточник: services/ride/src/main/java/ru/itis/servlet/RideServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E055 GET /api/rides/{{rideId}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{ride}}/api/rides/{{rideId}}",
+            "description": "\nОдна своя поездка; B → 403\nИсточник: services/ride/src/main/java/ru/itis/servlet/RideServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Documents",
+      "item": [
+        {
+          "name": "E037 POST /api/documents/generate",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{documents}}/api/documents/generate",
+            "description": "Для чека: своя PAID-поездка; другие типы и тела см. ниже\nНастоящий PDF, application/pdf, %PDF-, корректная кириллица; метаданные GENERATED\nИсточник: services/documents/src/main/java/ru/kicksharing/documents/servlet/DocumentServlet.java",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userA}}\",\n  \"docType\": \"RIDE_PAYMENT\",\n  \"sourceId\": \"{{rideId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E038 GET /api/documents?limit=50&offset=0",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{documents}}/api/documents?limit=50&offset=0",
+            "description": "\nТолько свои неудалённые метаданные, максимум limit; сохранить documentId\nИсточник: services/documents/src/main/java/ru/kicksharing/documents/servlet/DocumentServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E039 GET /api/documents/{{documentId}}",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{documents}}/api/documents/{{documentId}}",
+            "description": "\nМетаданные существующего своего документа\nИсточник: services/documents/src/main/java/ru/kicksharing/documents/servlet/DocumentServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E040 GET /api/documents/{{documentId}}/download",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{documents}}/api/documents/{{documentId}}/download",
+            "description": "Свой GENERATED-документ\nPDF заново построен из сохранённого снимка данных, не JSON и не HTML\nИсточник: services/documents/src/main/java/ru/kicksharing/documents/servlet/DocumentServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "E041 DELETE /api/documents/{{documentId}}",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenA}}"
+              }
+            ],
+            "url": "{{documents}}/api/documents/{{documentId}}",
+            "description": "Выполнять после скачивания и проверки снимка\nМягкое удаление, повтор DELETE тоже 204; GET/download затем 404\nИсточник: services/documents/src/main/java/ru/kicksharing/documents/servlet/DocumentServlet.java"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Expected success status with valid preconditions\", function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

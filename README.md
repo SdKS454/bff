@@ -1,5 +1,7 @@
 # Кикшеринг: BFF, ScootX и пять микросервисов — GPS-версия для проверки
 
+Полная проверка перед сдачей: [317 пунктов и все URL/API](docs/FULL_API_URL_CHECKLIST.md), [CSV для результатов](docs/FULL_API_URL_CHECKLIST.csv), [58 запросов Postman](docs/ALL_API.postman_collection.json).
+
 Полный локальный стенд: все исходники сервисов в `services/`,
 BFF и фронтенд — в корневом `src/`. Java 17 / Tomcat 10.1.
 
