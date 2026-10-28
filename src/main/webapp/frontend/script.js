@@ -77,7 +77,7 @@ document.addEventListener('click', async event => {
     const plate = favorite.dataset.favorite;
     const favorites = window.ScootxApi.setFavorite(viewState.user.id, plate, !viewState.favorites.includes(plate));
     setPageData({ favorites }); window.ScootxAccount.updateFavorites(favorites);
-    notify('Избранное сохранено только в этом браузере.'); return;
+    return;
   }
   if (event.target.closest('[data-scroll-catalog]')) { dialog.close(); document.getElementById('scooters').scrollIntoView(); return; }
   const direction = event.target.closest('[data-review-direction]');

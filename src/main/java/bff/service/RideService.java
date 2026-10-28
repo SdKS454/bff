@@ -16,5 +16,7 @@ public interface RideService {
 
     JsonResponse pay(String jwt, UUID rideId);
 
+    JsonResponse review(String jwt, UUID rideId, String json);
+
     JsonResponse findByUser(String jwt, UUID userId);
 }

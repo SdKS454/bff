@@ -18,6 +18,7 @@ public final class BrowserTestServer {
     static final String RIDE = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
     static volatile JsonObject fixture = Json.createObjectBuilder().build();
     static volatile boolean started, revoked;
+    static volatile String reviewJson;
     static volatile String rideState = "ACTIVE", name = "Иван Петров", login = "ivan";
     static final List<JsonObject> calls = new CopyOnWriteArrayList<>();
     static int status(String key, int defaultValue) { return fixture.getInt(key, defaultValue); }
@@ -34,7 +35,7 @@ public final class BrowserTestServer {
     static String ride() {
         return "{\"id\":\"" + RIDE + "\",\"userId\":\"" + USER + "\",\"numberPlate\":" + JsonText.quote(plate())
                 + ",\"status\":" + JsonText.quote(rideState) + ",\"startedAt\":" + JsonText.quote(Instant.now().minusSeconds(120).toString())
-                + (rideState.equals("ACTIVE") ? "" : ",\"finishedAt\":" + JsonText.quote(Instant.now().toString()) + ",\"durationSeconds\":120,\"amount\":123.45,\"currency\":\"RUB\"") + "}";
+                + (rideState.equals("ACTIVE") ? "" : ",\"finishedAt\":" + JsonText.quote(Instant.now().toString()) + ",\"durationSeconds\":120,\"amount\":123.45,\"currency\":\"RUB\"") + (reviewJson == null ? "" : ",\"review\":" + reviewJson) + "}";
     }
     static void send(HttpExchange e, int code, String type, String body) throws IOException {
         byte[] data = body.getBytes(StandardCharsets.UTF_8);
@@ -47,7 +48,7 @@ public final class BrowserTestServer {
         String path = e.getRequestURI().getPath(), method = e.getRequestMethod();
         String body = new String(e.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
         if (path.equals("/__fixture")) {
-            fixture = JsonText.object(body); started = false; revoked = false; rideState = "ACTIVE"; name = "Иван Петров"; login = "ivan"; calls.clear();
+            fixture = JsonText.object(body); started = false; reviewJson = null; revoked = false; rideState = "ACTIVE"; name = "Иван Петров"; login = "ivan"; calls.clear();
             send(e, 204, "application/json", ""); return;
         }
         if (path.equals("/__patch")) {
@@ -81,6 +82,7 @@ public final class BrowserTestServer {
             if (method.equals("POST") && code == 200) { code = 201; started = true; rideState = "ACTIVE"; result = ride(); }
             else result = started ? "[" + ride() + "]" : "[]";
         } else if (path.endsWith("/finish")) { code = status("finishStatus", 200); if (code == 200) rideState = "FINISHED"; result = ride(); }
+        else if (path.endsWith("/review")) { code = status("reviewStatus",200); if (code == 200) reviewJson = body; result = ride(); }
         else if (path.endsWith("/pay")) { code = status("payStatus", 200); if (code == 200) rideState = "PAID"; result = ride(); }
         else if(path.equals("/api/documents")){result="[]";}
         else if (path.equals("/api/documents/generate")) {

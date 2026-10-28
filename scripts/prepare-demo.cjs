@@ -16,9 +16,9 @@ async function account(login,name){
 }
 (async()=>{
  if(user===admin)throw new Error('Для USER и ADMIN нужны разные логины');
- const normal=await account(user,'Демонстрационный пользователь');
+ const normal=await account(user,'Иван Петров');
  if(normal.user.role!=='USER')throw new Error(user+' уже имеет другую роль; используйте другой DEMO_USER_LOGIN');
- const privileged=await account(admin,'Демонстрационный администратор');
+ const privileged=await account(admin,'Пётр Иванов');
  if(privileged.user.role!=='ADMIN'){
   execFileSync('docker',['compose','-p',project,'exec','-T','user','java','-cp','/usr/local/tomcat/webapps/ROOT/WEB-INF/classes:/usr/local/tomcat/webapps/ROOT/WEB-INF/lib/*','ru.scooter.user.cli.PromoteAdmin',admin],{cwd:path.resolve(__dirname,'..'),stdio:'pipe'});
   const check=await request('/api/auth/login',{login:admin,password});if(check.user.role!=='ADMIN')throw new Error('Роль ADMIN не подтверждена');

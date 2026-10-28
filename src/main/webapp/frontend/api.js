@@ -66,17 +66,29 @@
     try { localStorage.setItem(key(userId), JSON.stringify(items)); } catch (_) { /* Device storage can be disabled. */ }
     return items;
   }
+  function latestBirthDate() {
+    const today = new Date();
+    const year = today.getUTCFullYear() - 16, month = today.getUTCMonth();
+    const day = Math.min(today.getUTCDate(), new Date(Date.UTC(year, month + 1, 0)).getUTCDate());
+    return new Date(Date.UTC(year, month, day)).toISOString().slice(0, 10);
+  }
   function validateRegistration(values) {
     if (!/^[A-Za-z0-9_.-]{3,64}$/.test(values.login || '')) throw new Error('Логин: 3–64 символа, латиница, цифры, _, . или -.');
     if ((values.password || '').length < 8 || values.password.includes('\0') || new TextEncoder().encode(values.password).length > 72)
       throw new Error('Пароль: минимум 8 символов, максимум 72 байта UTF-8.');
-    if (!values.fullName?.trim() || values.fullName.trim().length > 200 || /[\u0000-\u001f\u007f-\u009f]/.test(values.fullName))
-      throw new Error('Укажите ФИО до 200 символов без управляющих символов.');
+    const name = (values.fullName || '').trim();
+    const word = "\\p{Lu}\\p{Ll}*(?:[-'’]\\p{Lu}\\p{Ll}*)*";
+    if (name.length > 200 || /[\u0000-\u001f\u007f-\u009f]/.test(values.fullName || '')
+        || !new RegExp('^' + word + '(?: ' + word + '){1,3}$', 'u').test(name)
+        || name.split(' ').some(part => (part.match(/\p{L}/gu) || []).length < 2)
+        || ![/^[\p{Script=Latin} '’\-]+$/u, /^[\p{Script=Cyrillic} '’\-]+$/u].some(pattern => pattern.test(name)))
+      throw new Error('ФИО: 2–4 слова с заглавной буквы, кириллица или латиница, до 200 символов.');
     const date = new Date((values.birthDate || '') + 'T00:00:00Z');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(values.birthDate || '') || !Number.isFinite(date.getTime())
         || date.toISOString().slice(0, 10) !== values.birthDate || values.birthDate < '1900-01-01'
         || values.birthDate > new Date().toISOString().slice(0, 10)) throw new Error('Укажите корректную дату рождения.');
+    if (values.birthDate > latestBirthDate()) throw new Error('Регистрация доступна с 16 лет.');
     if (values.password !== values.confirm) throw new Error('Пароли не совпадают.');
   }
-  window.ScootxApi = { request, downloadDocument, redirectAdmin, favorites, setFavorite, validateRegistration, ApiError };
+  window.ScootxApi = { request, downloadDocument, redirectAdmin, favorites, setFavorite, latestBirthDate, validateRegistration, ApiError };
 })();

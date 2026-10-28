@@ -22,7 +22,7 @@ class UserIntegration(unittest.TestCase):
             NoRedirect(), urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
         self.login = 'bff_sync_' + uuid.uuid4().hex[:16]
         self.body = dict(login=self.login, password='local-test-password',
-                         fullName='Тестовый пользователь', birthDate='2000-05-17')
+                         fullName='Иван Петров', birthDate='2000-05-17')
 
     def call(self, base, path, method='GET', body=None, token=None):
         headers = {}

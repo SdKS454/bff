@@ -52,7 +52,7 @@
         <div class="collection-intro"><p>Одинаково удобные самокаты — в разных точках города.<br>Выбери по расположению, заряду и статусу.</p></div>
       </div>
       <div class="fleet-caption"><span><i class="availability-dot"></i><b id="fleet-count">Самокаты рядом</b></span><span>Одна модель · всё необходимое для поездки</span></div>
-      <div class="catalog-tools"><button id="refresh-fleet" type="button">Обновить каталог</button><button id="nearest-fleet" type="button">Найти по координатам</button></div>
+      <div class="catalog-tools"><button id="refresh-fleet" type="button">Обновить каталог</button></div>
       <p id="catalog-message" role="status"></p>
       <div class="product-grid" id="product-grid"></div>
       <div class="collection-bottom"><button class="split dark" id="view-all" type="button"><span>Показать все самокаты</span><b>→</b></button></div>

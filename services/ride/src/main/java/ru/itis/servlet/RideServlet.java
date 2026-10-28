@@ -80,6 +80,13 @@ public class RideServlet extends HttpServlet {
 
     @Override
     protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        if (req.getPathInfo() != null && req.getPathInfo().endsWith("/review")) {
+            String[] parts = req.getPathInfo().split("/", -1);
+            if (parts.length != 3) throw new ApiException(404, "Путь не найден");
+            var review = ru.itis.dto.ReviewRequest.from(ru.itis.util.Json.body(req));
+            writeJson(resp, 200, rideService.review((UUID)req.getAttribute("userId"), parseUuid(parts[1], 404), review));
+            return;
+        }
         if(req.getPathInfo()!=null && req.getPathInfo().endsWith("/position")) {
             String[] parts=req.getPathInfo().split("/",-1);if(parts.length!=3)throw new ApiException(404,"Путь не найден");
             var body=ru.itis.util.Json.body(req);rideService.position((UUID)req.getAttribute("userId"),parseUuid(parts[1],404),ru.itis.util.Json.number(body,"posX",true),ru.itis.util.Json.number(body,"posY",true));resp.setStatus(204);return;

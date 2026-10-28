@@ -185,7 +185,7 @@ def main():
                 if key != 'WAR_URL': raise RuntimeError('Documents failed; inspect ' + str(logs))
             for login in ('integration.admin', 'integration.user'):
                 data = json.dumps(dict(login=login, password='Integration-password-123',
-                                       fullName=login, birthDate='2000-01-01')).encode()
+                                       fullName="Иван Петров", birthDate='2000-01-01')).encode()
                 request = urllib.request.Request(urls['USER_URL'] + '/api/users/register', data=data,
                                                  headers={'Content-Type': 'application/json'})
                 with urllib.request.urlopen(request, timeout=15) as response:

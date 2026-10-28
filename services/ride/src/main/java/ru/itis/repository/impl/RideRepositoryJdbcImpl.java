@@ -138,6 +138,12 @@ public class RideRepositoryJdbcImpl implements RideRepository {
         }catch(SQLException e){throw new ApiException(503,"Хранилище поездок недоступно");}
     }
 
+    @Override public boolean review(UUID id, ru.itis.model.RideReview review) {
+        return update("UPDATE rides SET ride_rating=?, scooter_rating=?, ride_comment=?, scooter_comment=?, reviewed_at=? "
+                + "WHERE id=? AND status IN ('FINISHED','PAID')", review.rideRating(), review.scooterRating(),
+                review.rideComment(), review.scooterComment(), Timestamp.from(review.reviewedAt()), id) == 1;
+    }
+
     private RideEntity map(ResultSet resultSet) throws SQLException {
         RideEntity ride = new RideEntity();
         ride.setId(resultSet.getObject("id", UUID.class));
@@ -161,6 +167,9 @@ public class RideRepositoryJdbcImpl implements RideRepository {
         ride.setPaidAt(readInstant(resultSet, "paid_at"));
         ride.setUnlockFee(resultSet.getBigDecimal("unlock_fee"));
         ride.setPricePerMinute(resultSet.getBigDecimal("price_per_minute"));
+        Instant reviewedAt = readInstant(resultSet, "reviewed_at");
+        if (reviewedAt != null) ride.setReview(new ru.itis.model.RideReview(resultSet.getInt("ride_rating"),
+                resultSet.getInt("scooter_rating"), resultSet.getString("ride_comment"), resultSet.getString("scooter_comment"), reviewedAt));
         return ride;
     }
 

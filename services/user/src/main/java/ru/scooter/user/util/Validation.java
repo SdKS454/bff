@@ -30,12 +30,23 @@ public final class Validation {
     }
 
     public static String fullName(String value) {
-        if (value == null
-                || value.isBlank()
-                || value.trim().length() > 200
-                || value.codePoints().anyMatch(Character::isISOControl))
-            throw bad("Укажите полное имя длиной до 200 символов");
-        return value.trim();
+        String message = "ФИО: 2–4 слова с заглавной буквы, кириллица или латиница, до 200 символов";
+        if (value == null || value.codePoints().anyMatch(Character::isISOControl)) throw bad(message);
+        String name = value.trim();
+        String word = "[\\p{Lu}][\\p{Ll}]*(?:[-'’][\\p{Lu}][\\p{Ll}]*)*";
+        if (name.length() > 200 || !name.matches(word + "(?: " + word + "){1,3}")) throw bad(message);
+        Character.UnicodeScript script = null;
+        for (String part : name.split(" ")) {
+            if (part.codePoints().filter(Character::isLetter).count() < 2) throw bad(message);
+            for (int point : part.codePoints().filter(Character::isLetter).toArray()) {
+                var current = Character.UnicodeScript.of(point);
+                if (current != Character.UnicodeScript.CYRILLIC && current != Character.UnicodeScript.LATIN)
+                    throw bad(message);
+                if (script != null && script != current) throw bad(message);
+                script = current;
+            }
+        }
+        return name;
     }
 
     public static LocalDate birthDate(String value) {
@@ -44,6 +55,8 @@ public final class Validation {
             if (date.isAfter(LocalDate.now(java.time.ZoneOffset.UTC))
                     || date.isBefore(LocalDate.of(1900, 1, 1)))
                 throw bad("Некорректная дата рождения");
+            if (date.isAfter(LocalDate.now(java.time.ZoneOffset.UTC).minusYears(16)))
+                throw bad("Регистрация доступна с 16 лет");
             return date;
         } catch (java.time.format.DateTimeParseException | NullPointerException e) {
             throw bad("Дата рождения должна быть YYYY-MM-DD");

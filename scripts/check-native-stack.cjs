@@ -18,7 +18,7 @@ async function api(route, token, method = 'GET', body) {
 }
 async function account(kind) {
   const login = 'native.' + kind + '.' + suffix;
-  const registration = await api('/api/auth/register', null, 'POST', { login, password, fullName: 'Проверка без Docker', birthDate: '2000-01-01' });
+  const registration = await api('/api/auth/register', null, 'POST', { login, password, fullName: 'Иван Петров', birthDate: '2000-01-01' });
   assert.equal(registration.status, 201, JSON.stringify(registration.data));
   const loginResult = await api('/api/auth/login', null, 'POST', { login, password });
   assert.equal(loginResult.status, 200, JSON.stringify(loginResult.data));
@@ -30,6 +30,11 @@ function pdf(result) {
   assert.equal(result.bytes.subarray(0, 5).toString(), '%PDF-');
 }
 (async () => {
+  const candidate = {login:'invalid.'+suffix,password,fullName:'Иван Петров',birthDate:'2000-01-01'};
+  for (const patch of [{birthDate:new Date().toISOString().slice(0,10)},{fullName:'huIBSOIAHUD PAISUDB AOSIDHBN'},{fullName:'Иван123 Петров'}])
+    assert.equal((await api('/api/auth/register',null,'POST',{...candidate,...patch})).status,400);
+  const directUser = await fetch('http://localhost:8081/api/users/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...candidate,birthDate:new Date().toISOString().slice(0,10)})});
+  assert.equal(directUser.status,400,'Direct User registration must also enforce age');
   const owner = await account('owner'), other = await account('other');
   const token = owner.accessToken;
   assert.equal((await api('/api/users/me', token)).data.id, owner.user.id);
@@ -40,11 +45,25 @@ function pdf(result) {
   const started = await api('/api/rides', token, 'POST', { numberPlate: scooter.numberPlate, posX: 10, posY: 15 });
   assert.equal(started.status, 201, JSON.stringify(started.data));
   const id = started.data.id;
+  const reviewBody = {rideRating:5,scooterRating:4,rideComment:'Хорошая поездка',scooterComment:'<script>plain text</script>'};
+  const reviewPath = '/api/rides/'+id+'/review';
+  assert.equal((await api(reviewPath,token,'PUT',reviewBody)).status,409,'Cannot review an ACTIVE ride');
+  assert.equal((await api(reviewPath,other.accessToken,'PUT',reviewBody)).status,403,'Cannot review another owner’s ride');
   assert.equal((await api('/api/rides/' + id + '/position', other.accessToken, 'PUT', { posX: 11, posY: 16 })).status, 403);
   assert.equal((await api('/api/rides/' + id + '/position', token, 'PUT', { posX: 11.125, posY: 16.75 })).status, 204);
   const finished = await api('/api/rides/' + id + '/finish', token, 'PUT', { posX: 12, posY: 17 });
   assert.equal(finished.status, 200, JSON.stringify(finished.data));
-  const paid = await api('/api/rides/' + id + '/pay', token, 'POST', {});
+  const review = await api(reviewPath,token,'PUT',reviewBody);
+  assert.equal(review.status,200,JSON.stringify(review.data));
+  assert.equal(review.data.review.rideRating,5);assert.equal(review.data.review.scooterComment,reviewBody.scooterComment);
+  for (const patch of [{rideRating:0},{scooterRating:6},{rideRating:1.5},{rideRating:'5'},{rideComment:'x'.repeat(1001)}])
+    assert.equal((await api(reviewPath,token,'PUT',{...reviewBody,...patch})).status,400);
+  assert.equal((await api(reviewPath,other.accessToken,'PUT',reviewBody)).status,403);
+  const changed = await api(reviewPath,token,'PUT',{...reviewBody,rideComment:'Обновлённый отзыв'});
+  assert.equal(changed.status,200);assert.equal(changed.data.review.rideComment,'Обновлённый отзыв');
+  const history = await api('/api/rides',token);
+  assert.equal(history.data.find(r=>r.id===id).review.rideComment,'Обновлённый отзыв');
+  const paid = await api('/api/rides/' + id + '/pay' , token, 'POST', {});
   assert.equal(paid.status, 200, JSON.stringify(paid.data)); assert.equal(paid.data.status, 'PAID');
   assert.equal(paid.data.amount, finished.data.amount); assert.equal(paid.data.paymentMode, 'EDUCATIONAL');
   pdf(await api('/api/documents/generate', token, 'POST', { docType: 'RIDE_PAYMENT', sourceId: id }));
@@ -60,5 +79,5 @@ function pdf(result) {
   assert.equal((await api('/api/auth/logout', token, 'POST')).status, 204);
   assert.equal((await api('/api/users/me', token)).status, 401);
   await api('/api/auth/logout', other.accessToken, 'POST');
-  console.log('PASS: native local registration, User/Moderation profile, nearest, owned position, finish/pay, receipt/history PDF, snapshots, ownership, soft delete and logout');
+  console.log('PASS: native 16+ registration, User/Moderation profile, nearest, owned position, finish/pay, owned reviews with rating validation and editing, receipt/history PDF, snapshots, ownership, soft delete and logout');
 })().catch(error => { console.error(error.stack || error.message); process.exitCode = 1; });

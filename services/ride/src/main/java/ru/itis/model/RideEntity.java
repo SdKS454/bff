@@ -11,6 +11,7 @@ import java.util.UUID;
 
 @Data
 public class RideEntity {
+    private RideReview review;
     private String paymentMode;
     private UUID id;
     private UUID userId;

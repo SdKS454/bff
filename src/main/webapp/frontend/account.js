@@ -58,7 +58,7 @@
   function shell(content, account = false) { page.openDialog(`<div class="account-shell">${aside(account)}<section class="account-content">${content}</section></div>`, true); }
   function auth(mode = 'login', login = '', error = '') {
     const register = mode === 'register';
-    shell(`<div class="account-tabs" role="tablist" aria-label="Вход или регистрация"><button role="tab" aria-selected="${!register}" class="${register ? '' : 'selected'}" data-auth-mode="login">Вход</button><button role="tab" aria-selected="${register}" class="${register ? 'selected' : ''}" data-auth-mode="register">Регистрация</button></div><h2>${register ? 'Создать аккаунт' : 'С возвращением'}</h2><p class="account-subtitle">${register ? 'Профиль и история поездок — в одном месте.' : 'Войди, чтобы выбрать следующий маршрут.'}</p><form id="auth-form" class="account-form" data-mode="${register ? 'register' : 'login'}">${register ? `<label>ФИО<input name="fullName" autocomplete="name" maxlength="200" required></label><label>Дата рождения<input name="birthDate" type="date" min="1900-01-01" max="${new Date().toISOString().slice(0,10)}" autocomplete="bday" required></label>` : ''}<label>Логин<input name="login" autocomplete="username" ${register ? 'minlength="3" maxlength="64" pattern="[A-Za-z0-9_.\\-]{3,64}" title="Латиница, цифры, _, . или -"' : ''} value="${esc(login)}" required></label><label>Пароль<div class="password-field"><input name="password" type="password" autocomplete="${register ? 'new-password' : 'current-password'}" ${register ? 'minlength="8"' : ''} required><button type="button" data-password-toggle aria-label="Показать пароль">Показать</button></div></label>${register ? '<p class="account-subtitle">От 8 символов, не более 72 байт UTF-8. Кириллица и эмодзи занимают больше одного байта.</p><label>Повтори пароль<input name="confirm" type="password" autocomplete="new-password" minlength="8" required></label>' : ''}<p class="form-error" role="alert" ${error ? '' : 'hidden'}>${esc(error)}</p><button class="account-submit" type="submit"><span>${register ? 'Зарегистрироваться' : 'Войти'}</span><b>→</b></button></form><p class="auth-switch">${register ? 'Уже есть аккаунт?' : 'Ещё нет аккаунта?'} <button data-auth-mode="${register ? 'login' : 'register'}">${register ? 'Войти' : 'Создать аккаунт'}</button></p>`);
+    shell(`<div class="account-tabs" role="tablist" aria-label="Вход или регистрация"><button role="tab" aria-selected="${!register}" class="${register ? '' : 'selected'}" data-auth-mode="login">Вход</button><button role="tab" aria-selected="${register}" class="${register ? 'selected' : ''}" data-auth-mode="register">Регистрация</button></div><h2>${register ? 'Создать аккаунт' : 'С возвращением'}</h2><p class="account-subtitle">${register ? 'Профиль и история поездок — в одном месте.' : 'Войди, чтобы выбрать следующий маршрут.'}</p><form id="auth-form" class="account-form" data-mode="${register ? 'register' : 'login'}">${register ? `<label>ФИО<input name="fullName" autocomplete="name" maxlength="200" placeholder="Иван Петров Иванович" required></label><p class="account-subtitle">Фамилия и имя, отчество — при наличии. Каждое слово с заглавной буквы. Регистрация с 16 лет.</p><label>Дата рождения<input name="birthDate" type="date" min="1900-01-01" max="${service.latestBirthDate()}" autocomplete="bday" required></label>` : ''}<label>Логин<input name="login" autocomplete="username" ${register ? 'minlength="3" maxlength="64" pattern="[A-Za-z0-9_.\\-]{3,64}" title="Латиница, цифры, _, . или -"' : ''} value="${esc(login)}" required></label><label>Пароль<div class="password-field"><input name="password" type="password" autocomplete="${register ? 'new-password' : 'current-password'}" ${register ? 'minlength="8"' : ''} required><button type="button" data-password-toggle aria-label="Показать пароль">Показать</button></div></label>${register ? '<p class="account-subtitle">От 8 символов, не более 72 байт UTF-8. Кириллица и эмодзи занимают больше одного байта.</p><label>Повтори пароль<input name="confirm" type="password" autocomplete="new-password" minlength="8" required></label>' : ''}<p class="form-error" role="alert" ${error ? '' : 'hidden'}>${esc(error)}</p><button class="account-submit" type="submit"><span>${register ? 'Зарегистрироваться' : 'Войти'}</span><b>→</b></button></form><p class="auth-switch">${register ? 'Уже есть аккаунт?' : 'Ещё нет аккаунта?'} <button data-auth-mode="${register ? 'login' : 'register'}">${register ? 'Войти' : 'Создать аккаунт'}</button></p>`);
   }
   function emptyState(title, message) { return `<div class="account-empty"><h3>${esc(title)}</h3><p>${esc(message)}</p><button data-scroll-catalog type="button">Выбрать самокат →</button></div>`; }
   function elapsed(ride) {
@@ -68,7 +68,18 @@
   }
   function rideHtml(ride) {
     const active = ride.status === 'ACTIVE', s = state.fleet.find(s => s.numberPlate === ride.numberPlate);
-    return `<article class="ride-item"><div class="ride-top">${page.plateHtml(ride.numberPlate)}<span class="ride-status ${active ? 'active' : ride.status === 'PAID' ? 'paid' : 'finished'}">${esc(page.rideStatuses[ride.status] || ride.status)}</span></div>${active && Number.isFinite(ride.lastPosX) && Number.isFinite(ride.lastPosY)?`<p class="ride-date">Последняя позиция: долгота ${esc(page.coordinate(ride.lastPosX))}, широта ${esc(page.coordinate(ride.lastPosY))}</p>`:''}<p class="ride-date">${esc(page.dateLabel(ride.startedAt))}${ride.finishedAt ? ' → ' + esc(page.dateLabel(ride.finishedAt)) : ''}</p><div class="ride-metrics"><div><small>Время</small><b ${active ? `data-elapsed="${esc(ride.startedAt)}"` : ''}>${elapsed(ride)}</b></div><div><small>Заряд самоката</small><b>${page.chargeLabel(s)}</b></div><div><small>${active ? 'Сумма от сервиса' : 'Итоговая сумма'}</small><b>${esc(page.money(ride.amount, ride.currency))}</b></div></div>${active ? `<button class="ride-button" data-position-ride="${esc(ride.id)}" type="button">Обновить местоположение</button><button class="ride-button" data-finish-ride="${esc(ride.id)}" type="button">Завершить поездку →</button>` : ride.status === 'FINISHED' ? `<button class="ride-button" data-pay-ride="${esc(ride.id)}" type="button">Оплатить →</button>` : ride.status === 'PAID' ? `<span class="payment-complete">✓ Оплата подтверждена</span><button class="ride-button" data-receipt="${esc(ride.id)}" type="button">Скачать чек PDF ↓</button>` : ''}</article>`;
+    return `<article class="ride-item"><div class="ride-top">${page.plateHtml(ride.numberPlate)}<span class="ride-status ${active ? 'active' : ride.status === 'PAID' ? 'paid' : 'finished'}">${esc(page.rideStatuses[ride.status] || ride.status)}</span></div>${active && Number.isFinite(ride.lastPosX) && Number.isFinite(ride.lastPosY)?`<p class="ride-date">Последняя позиция: долгота ${esc(page.coordinate(ride.lastPosX))}, широта ${esc(page.coordinate(ride.lastPosY))}</p>`:''}<p class="ride-date">${esc(page.dateLabel(ride.startedAt))}${ride.finishedAt ? ' → ' + esc(page.dateLabel(ride.finishedAt)) : ''}</p><div class="ride-metrics"><div><small>Время</small><b ${active ? `data-elapsed="${esc(ride.startedAt)}"` : ''}>${elapsed(ride)}</b></div><div><small>Заряд самоката</small><b>${page.chargeLabel(s)}</b></div><div><small>${active ? 'Сумма от сервиса' : 'Итоговая сумма'}</small><b>${esc(page.money(ride.amount, ride.currency))}</b></div></div>${active ? `<button class="ride-button" data-position-ride="${esc(ride.id)}" type="button">Обновить местоположение</button><button class="ride-button" data-finish-ride="${esc(ride.id)}" type="button">Завершить поездку →</button>` : ride.status === 'FINISHED' ? `<button class="ride-button" data-pay-ride="${esc(ride.id)}" type="button">Оплатить →</button>` : ride.status === 'PAID' ? `<span class="payment-complete">✓ Оплата подтверждена</span><button class="ride-button" data-receipt="${esc(ride.id)}" type="button">Скачать чек PDF ↓</button>` : ''}${['FINISHED','PAID'].includes(ride.status) ? reviewHtml(ride) : ''}</article>`;
+  }
+  function reviewHtml(ride) {
+    const review = ride.review;
+    return `${review ? `<div class="ride-review"><p>Оценка поездки: ${esc(review.rideRating)}/5 · Самокат: ${esc(review.scooterRating)}/5</p>${review.rideComment ? `<p style="white-space:pre-wrap">Поездка: ${esc(review.rideComment)}</p>` : ''}${review.scooterComment ? `<p style="white-space:pre-wrap">Самокат: ${esc(review.scooterComment)}</p>` : ''}</div>` : ''}<button class="ride-button" data-review-ride="${esc(ride.id)}" type="button">${review ? 'Изменить отзыв' : 'Оставить отзыв'}</button>`;
+  }
+  function reviewForm(id) {
+    const ride = state.rides.find(r => r.id === id);
+    if (!ride || !['FINISHED','PAID'].includes(ride.status)) { account('rides'); return; }
+    const review = ride.review || {};
+    const rating = (name, label) => `<label>${label}<select name="${name}" required><option value="">Выберите оценку</option>${[5,4,3,2,1].map(value => `<option value="${value}" ${review[name] === value ? 'selected' : ''}>${value}</option>`).join('')}</select></label>`;
+    shell(`<button data-account-tab="rides" type="button">← Мои поездки</button><h2>Отзыв о поездке и самокате</h2>${page.plateHtml(ride.numberPlate)}<form class="account-form" id="review-ride-form" data-ride-id="${esc(id)}">${rating('rideRating','Оценка поездки (1–5)')}<label>Как прошла поездка?<textarea name="rideComment" maxlength="1000" rows="3">${esc(review.rideComment || '')}</textarea></label>${rating('scooterRating','Оценка самоката (1–5)')}<label>Комментарий о самокате<textarea name="scooterComment" maxlength="1000" rows="3">${esc(review.scooterComment || '')}</textarea></label><p class="account-subtitle">Комментарии необязательны, до 1000 символов каждый.</p><p class="form-error" role="alert" hidden></p><button class="account-submit" type="submit">Сохранить отзыв</button></form>`, true);
   }
   function account(tab = 'profile') {
     if (!state.user) { auth(); return; }
@@ -82,7 +93,7 @@
       content = `<p class="account-subtitle">Текущий маршрут и история поездок. Стоимость рассчитывается по тарифу поездки.</p><button data-account-tab="rides" type="button">Обновить историю</button>${state.ridesError ? `<p class="form-error" role="alert">${esc(state.ridesError)}</p>` : state.rides.length ? `<div class="ride-list">${state.rides.map(rideHtml).join('')}</div>` : emptyState('Первый маршрут — впереди', 'После старта поездка появится здесь.')}`;
     } else if (tab === 'saved') {
       const scooters = state.fleet.filter(s => state.favorites.includes(s.numberPlate));
-      content = `<p class="account-subtitle">Избранное хранится только в этом браузере, отдельно для каждого пользователя.</p>${scooters.length ? `<div class="saved-list">${scooters.map(s => `<article class="saved-row"><div class="product-picture crop" data-crop="${page.photoCrop.join(',')}"></div><div>${page.plateHtml(s.numberPlate)}<p>Заряд: ${page.chargeLabel(s)}</p><button data-scooter="${esc(s.numberPlate)}" type="button">Открыть</button> <button data-unsave="${esc(s.numberPlate)}" type="button">Убрать</button></div></article>`).join('')}</div>` : emptyState('Сохранённых самокатов нет', 'Нажми на сердечко в карточке самоката.')}`;
+      content = `${scooters.length ? `<div class="saved-list">${scooters.map(s => `<article class="saved-row"><div class="product-picture crop" data-crop="${page.photoCrop.join(',')}"></div><div>${page.plateHtml(s.numberPlate)}<p>Заряд: ${page.chargeLabel(s)}</p><button data-scooter="${esc(s.numberPlate)}" type="button">Открыть</button> <button data-unsave="${esc(s.numberPlate)}" type="button">Убрать</button></div></article>`).join('')}</div>` : emptyState('Сохранённых самокатов нет', 'Нажми на сердечко в карточке самоката.')}`;
     } else {
       content = `<p class="account-subtitle">Чеки оплаченных поездок доступны в разделе «Мои поездки». Период истории задаётся по датам UTC.</p><form class="account-form" id="history-document-form"><label>Период с<input type="date" name="from" required></label><label>По<input type="date" name="to" required></label><p class="form-error" role="alert" hidden></p><button class="account-submit" type="submit">Скачать историю поездок PDF</button></form>${state.user.blocked ? '<button class="ride-button" data-blocked-document type="button">Уведомление о блокировке PDF</button>' : ''}`;
     }
@@ -142,10 +153,6 @@
     const ride = state.rides.find(r => r.id === id);
     if (!ride || ride.status !== 'FINISHED') { account('rides'); return; }
     shell(`<button data-account-tab="rides" type="button">← Мои поездки</button><h2>Оплата поездки</h2>${page.plateHtml(ride.numberPlate)}<div class="payment-total"><small>Итоговая стоимость</small><strong>${esc(page.money(ride.amount, ride.currency))}</strong></div><p class="booking-notice">Подтвердите оплату поездки. Статус обновится после успешной операции.</p><form class="account-form" id="pay-ride-form" data-ride-id="${esc(id)}"><p class="form-error" role="alert" hidden></p><button class="account-submit" type="submit">Оплатить поездку</button></form>`, true);
-  }
-  function nearestForm() {
-    if (!state.user) { auth(); return; }
-    shell(`<h2>Самокаты рядом</h2><form class="account-form" id="nearest-form">${coordinatesFields()}<p class="form-error" role="alert" hidden></p><button class="account-submit" type="submit">Найти самокаты</button></form>`, true);
   }
   function coords(form) {
     const owner = state.user?.id;
@@ -224,13 +231,12 @@
       } else if (form.id === 'pay-ride-form') {
         await service.request('/api/rides/' + encodeURIComponent(form.dataset.rideId) + '/pay', 'POST', {});
         committed = 'Оплата подтверждена'; await refresh(); if(dialog.open&&form.isConnected)account('rides'); page.notify(committed);
-      } else if (form.id === 'nearest-form') {
-        const scooters = await service.request('/api/scooters/nearest', 'POST', await coords(form));
-        if (!form.isConnected || !dialog.open) return;
-        if (!Array.isArray(scooters)) throw new Error('Некорректный список ближайших самокатов.');
-        state.fleet = scooters;
-        publish(scooters.length ? 'Свободные самокаты рядом с вами, сначала ближайшие.' : 'Свободных самокатов рядом нет.');
-        dialog.close(); document.getElementById('scooters').scrollIntoView();
+      } else if (form.id === 'review-ride-form') {
+        const body = {rideRating:Number(values.rideRating), scooterRating:Number(values.scooterRating), rideComment:values.rideComment, scooterComment:values.scooterComment};
+        if (![body.rideRating, body.scooterRating].every(value => Number.isInteger(value) && value >= 1 && value <= 5))
+          throw new Error('Выберите обе оценки от 1 до 5.');
+        await service.request('/api/rides/' + encodeURIComponent(form.dataset.rideId) + '/review', 'PUT', body);
+        committed = 'Отзыв сохранён'; await refresh(); if(dialog.open&&form.isConnected)account('rides'); page.notify(committed);
       } else if (form.id === 'history-document-form') {
         if (values.from > values.to) throw new Error('Начало периода должно быть не позже конца.');
         await service.downloadDocument({docType:'USER_HISTORY', from:values.from, to:values.to});await loadDocuments();
@@ -243,10 +249,10 @@
     } finally { button.disabled = false; delete form.dataset.submitting; }
   }
   document.addEventListener('submit', event => {
-    if (['auth-form','start-ride-form','finish-ride-form','position-ride-form','pay-ride-form','nearest-form','history-document-form'].includes(event.target.id)) { event.preventDefault(); submit(event.target); }
+    if (['auth-form','start-ride-form','finish-ride-form','position-ride-form','pay-ride-form','review-ride-form','history-document-form'].includes(event.target.id)) { event.preventDefault(); submit(event.target); }
   });
   document.addEventListener('click', async event => {
-    const action = event.target.closest('[data-auth-mode],[data-password-toggle],[data-account-tab],[data-start-ride],[data-finish-ride],[data-pay-ride],[data-unsave],[data-logout],[data-position-ride],[data-document-download],[data-document-delete],[data-document-retry],[data-documents-refresh],[data-documents-more],[data-receipt],[data-blocked-document]');
+    const action = event.target.closest('[data-auth-mode],[data-password-toggle],[data-account-tab],[data-start-ride],[data-finish-ride],[data-pay-ride],[data-review-ride],[data-unsave],[data-logout],[data-position-ride],[data-document-download],[data-document-delete],[data-document-retry],[data-documents-refresh],[data-documents-more],[data-receipt],[data-blocked-document]');
     if (!action || action.disabled) return;
     try {
       if (action.hasAttribute('data-auth-mode')) { auth(action.dataset.authMode); return; }
@@ -259,6 +265,7 @@
       else if (action.hasAttribute('data-start-ride')) { await refresh(); if(dialog.open&&action.isConnected)confirmStart(action.dataset.startRide); }
       else if (action.hasAttribute('data-finish-ride')) { await refresh(); if(dialog.open&&action.isConnected)confirmFinish(action.dataset.finishRide); }
       else if (action.hasAttribute('data-pay-ride')) { await refresh(); if(dialog.open&&action.isConnected)confirmPay(action.dataset.payRide); }
+      else if (action.hasAttribute('data-review-ride')) { await refresh(); if(dialog.open&&action.isConnected)reviewForm(action.dataset.reviewRide); }
       else if (action.hasAttribute('data-unsave')) { state.favorites = service.setFavorite(state.user?.id, action.dataset.unsave, false); publish(); account('saved'); }
       else if(action.hasAttribute('data-position-ride')) {
         shell(`<h2>Местоположение активной поездки</h2><form class="account-form" id="position-ride-form" data-ride-id="${esc(action.dataset.positionRide)}">${coordinatesFields()}<p class="form-error" role="alert" hidden></p><button class="account-submit" type="submit">Сохранить позицию</button></form>`,true);
@@ -288,7 +295,6 @@
   $('#account-label').addEventListener('click', entry);
   $('#account-button').addEventListener('click', entry);
   $('#refresh-fleet').addEventListener('click', async () => { try { await refresh(); } catch (e) { handleError(e); } });
-  $('#nearest-fleet').addEventListener('click', nearestForm);
   setInterval(() => document.querySelectorAll('[data-elapsed]').forEach(el => { el.textContent = elapsed({status:'ACTIVE', startedAt:el.dataset.elapsed}); }), 1000);
   window.ScootxAccount = {open:entry, refresh, handleError, updateFavorites:items => { state.favorites = items; }};
   refresh().then(() => {

@@ -16,5 +16,7 @@ public interface RideService {
 
     RideEntity pay(UUID userId, UUID id);
 
+    RideEntity review(UUID userId, UUID id, ru.itis.dto.ReviewRequest request);
+
     List<RideEntity> history(UUID userId, UUID requestedUserId);
 }

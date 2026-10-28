@@ -40,7 +40,7 @@ test('network and malformed success responses are failures, not successful actio
 });
 test('registration matches byte limit and rejects invalid dates and mismatched passwords', () => {
   const {api} = setup();
-  const input = {login:'ivan',password:'я'.repeat(36),confirm:'я'.repeat(36),fullName:'Иван',birthDate:'2000-05-17'};
+  const input = {login:'ivan',password:'я'.repeat(36),confirm:'я'.repeat(36),fullName:'Иван Петров',birthDate:'2000-05-17'};
   assert.doesNotThrow(() => api.validateRegistration(input));
   assert.throws(() => api.validateRegistration({...input,password:'я'.repeat(37)}),/72 байта/);
   assert.throws(() => api.validateRegistration({...input,birthDate:'2026-02-30'}),/дату рождения/);
@@ -79,4 +79,16 @@ test('stored document download uses authenticated GET and rejects non-PDF data',
   assert.equal(call.options.method,'GET');assert.equal(call.options.credentials,'same-origin');assert.equal(clicked,true);
   const bad=setup(async()=>({ok:true,status:200,headers:{get:()=> 'text/html'}}));
   await assert.rejects(bad.api.downloadDocument(undefined,'id'),e=>e.status===502);
+});
+
+test('registration requires sixteen years and a structured full name', () => {
+  const {api} = setup();
+  const input = {login:'ivan', password:'password123', confirm:'password123', fullName:'Иван Петров', birthDate:api.latestBirthDate()};
+  assert.doesNotThrow(() => api.validateRegistration(input));
+  const tomorrow = new Date(input.birthDate + 'T00:00:00Z'); tomorrow.setUTCDate(tomorrow.getUTCDate()+1);
+  assert.throws(() => api.validateRegistration({...input,birthDate:tomorrow.toISOString().slice(0,10)}), /16 лет/);
+  for (const fullName of ['huIBSOIAHUD PAISUDB AOSIDHBN','Иван','Иван  Петров','Иван123 Петров','Иван Pетров','иван петров'])
+    assert.throws(() => api.validateRegistration({...input,fullName}),/ФИО/);
+  for (const fullName of ['Анна-Мария Петрова','John O’Connor','Иван Петров Иванович'])
+    assert.doesNotThrow(() => api.validateRegistration({...input,fullName}));
 });

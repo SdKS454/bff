@@ -11,7 +11,7 @@ function dc(...args){return execFileSync('docker',['compose','-p',project,...arg
 function sql(db,query){return dc('exec','-T','postgres','psql','-U','kicksharing','-d',db,'-At','-v','ON_ERROR_STOP=1','-c',query).trim();}
 async function api(port,route,token,method='GET',body){const r=await fetch('http://localhost:'+port+route,{method,signal:AbortSignal.timeout(12000),headers:{...(token?{Authorization:'Bearer '+token}:{}),...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});let data;try{data=await r.json();}catch{}return{status:r.status,data};}
 async function wait(check,message){const deadline=Date.now()+45000;while(Date.now()<deadline){try{if(await check())return;}catch{}await new Promise(r=>setTimeout(r,400));}throw new Error(message);}
-async function user(suffix){const login='recovery.'+suffix+'.'+nonce;assert.equal((await api(8080,'/api/auth/register',null,'POST',{login,password,fullName:'Проверка восстановления',birthDate:'2000-01-01'})).status,201);return (await api(8080,'/api/auth/login',null,'POST',{login,password})).data;}
+async function user(suffix){const login='recovery.'+suffix+'.'+nonce;assert.equal((await api(8080,'/api/auth/register',null,'POST',{login,password,fullName:'Иван Петров',birthDate:'2000-01-01'})).status,201);return (await api(8080,'/api/auth/login',null,'POST',{login,password})).data;}
 function internal(plate,operation,body){
  // The key is read and used inside its own container; only the status code leaves it.
  const script='curl -s -o /dev/null -w "%{http_code}" -H "Content-Type: application/json" -H "X-Service-Key: $(cat /service-key/service.key)" --data "$1" "$2"';

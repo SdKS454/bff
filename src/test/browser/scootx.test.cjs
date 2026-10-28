@@ -112,7 +112,7 @@ test('real DOM registration → login → start → finish → pay → receipt �
 });
 test('UTF-8 password limit blocks registration before any API request', async () => {
   await openAuth('register');
-  for (const [name,value] of Object.entries({login:'ivan',password:'я'.repeat(37),confirm:'я'.repeat(37),fullName:'Иван',birthDate:'2000-05-17'})) await page.locator(`[name="${name}"]`).fill(value);
+  for (const [name,value] of Object.entries({login:'ivan',password:'я'.repeat(37),confirm:'я'.repeat(37),fullName:'Иван Петров',birthDate:'2000-05-17'})) await page.locator(`[name="${name}"]`).fill(value);
   await page.locator('#auth-form [type="submit"]').click();
   await page.locator('.form-error:not([hidden])').waitFor();
   assert.match(await page.locator('.form-error').innerText(),/72 байта/);
@@ -120,7 +120,7 @@ test('UTF-8 password limit blocks registration before any API request', async ()
 });
 test('registration displays User API duplicate login error', async () => {
   await settings({registerStatus:409}); await openAuth('register');
-  for (const [name,value] of Object.entries({login:'ivan',password:'password123',confirm:'password123',fullName:'Иван',birthDate:'2000-05-17'})) await page.locator(`[name="${name}"]`).fill(value);
+  for (const [name,value] of Object.entries({login:'ivan',password:'password123',confirm:'password123',fullName:'Иван Петров',birthDate:'2000-05-17'})) await page.locator(`[name="${name}"]`).fill(value);
   await page.locator('#auth-form [type="submit"]').click();
   await page.locator('.form-error:not([hidden])').waitFor();
   assert.equal(await page.locator('.form-error').innerText(),'Логин уже занят');
@@ -187,15 +187,16 @@ test('history PDF and nearest search use actual API paths with automatic GPS', a
   await page.locator('[name="from"]').fill('2026-10-01'); await page.locator('[name="to"]').fill('2026-10-20');
   const downloaded = page.waitForEvent('download'); await page.locator('#history-document-form [type="submit"]').click();
   assert.equal((await downloaded).suggestedFilename(),'document.pdf');
-  await page.locator('.dialog-close').click(); await page.locator('#nearest-fleet').click();
-  await checkAutomaticCoordinates('#nearest-form'); await page.locator('#nearest-form [type="submit"]').click();
+  await page.locator('.dialog-close').click();
+  assert.equal(await page.locator('#nearest-fleet').count(), 0);
+  await page.locator('#refresh-fleet').click();
   await page.waitForFunction(() => !document.querySelector('#details').open);
   assert.match(await page.locator('#catalog-message').innerText(),/сначала ближайшие/);
   assert.ok((await calls()).some(c => c.method === 'POST' && c.path === '/api/scooters/nearest'));
 });
 test('registered account is not registered twice when subsequent login fails', async () => {
   await settings({loginStatus:503}); await openAuth('register');
-  for (const [name,value] of Object.entries({login:'ivan',password:'password123',confirm:'password123',fullName:'Иван',birthDate:'2000-05-17'})) await page.locator(`[name="${name}"]`).fill(value);
+  for (const [name,value] of Object.entries({login:'ivan',password:'password123',confirm:'password123',fullName:'Иван Петров',birthDate:'2000-05-17'})) await page.locator(`[name="${name}"]`).fill(value);
   await page.locator('#auth-form [type="submit"]').click();
   await page.waitForFunction(() => document.querySelector('#auth-form')?.dataset.mode === 'login');
   assert.match(await page.locator('.form-error').innerText(),/Аккаунт создан/);
@@ -263,4 +264,32 @@ test('finish retries preserve the first GPS position after a service error',asyn
  await context.setGeolocation({longitude:37.6,latitude:55.7});await settings({finishStatus:200},true);
  await page.locator('#finish-ride-form [type="submit"]').click();await page.locator('[data-pay-ride]').waitFor();
  assert.equal(positions.length,2);assert.deepEqual(positions[0],positions[1]);
+});
+
+test('finished ride review survives refresh, can be edited and renders comments as text', async () => {
+  await login();
+  // Start and finish through real UI handlers and the packaged BFF proxy.
+  await page.locator('.dialog-close').click();
+  await page.locator('[data-scooter]').first().click();
+  await page.locator('[data-start-ride]').click();
+  await page.locator('#start-ride-form [type="submit"]').click();
+  await page.locator('[data-finish-ride]').click();
+  await page.locator('#finish-ride-form [type="submit"]').click();
+  await page.locator('[data-review-ride]').click();
+  await page.locator('[name="rideRating"]').selectOption('5');
+  await page.locator('[name="scooterRating"]').selectOption('4');
+  await page.locator('[name="rideComment"]').fill('Отличная поездка');
+  await page.locator('[name="scooterComment"]').fill('<img src=x onerror=alert(1)>');
+  await page.locator('#review-ride-form [type="submit"]').click();
+  await page.locator('.ride-review').waitFor();
+  assert.match(await page.locator('.ride-review').innerText(), /Отличная поездка/);
+  assert.equal(await page.locator('.ride-review img').count(),0);
+  const request = (await calls()).find(c => c.method === 'PUT' && c.path.endsWith('/review'));
+  assert.ok(request);
+  assert.match(await page.locator('.ride-review').innerText(), /Оценка поездки: 5\/5/);
+  await page.locator('[data-review-ride]').click();
+  assert.equal(await page.locator('[name="scooterRating"]').inputValue(),'4');
+  await page.locator('[name="rideComment"]').fill('Обновлённый отзыв');
+  await page.locator('#review-ride-form [type="submit"]').click();
+  assert.match(await page.locator('.ride-review').innerText(), /Обновлённый отзыв/);
 });

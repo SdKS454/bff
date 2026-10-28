@@ -11,7 +11,7 @@ const root=path.resolve(__dirname,'..'),password='Submission-password-123',nonce
 function dc(...args){return execFileSync('docker',['compose','-p',project,...args],{cwd:root,encoding:'utf8',timeout:180000});}
 function sql(db,q){return dc('exec','-T','postgres','psql','-U','kicksharing','-d',db,'-At','-v','ON_ERROR_STOP=1','-c',q).trim();}
 async function api(port,route,token,method='GET',body){const r=await fetch('http://localhost:'+port+route,{method,signal:AbortSignal.timeout(12000),headers:{...(token?{Authorization:'Bearer '+token}:{}),...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});const bytes=Buffer.from(await r.arrayBuffer());let data;try{data=JSON.parse(bytes);}catch{}return{status:r.status,data,bytes};}
-async function user(kind){const login='submission.'+kind+'.'+nonce;assert.equal((await api(8080,'/api/auth/register',null,'POST',{login,password,fullName:'Проверка сдачи',birthDate:'2000-01-01'})).status,201);const auth=(await api(8080,'/api/auth/login',null,'POST',{login,password})).data;return{...auth,login};}
+async function user(kind){const login='submission.'+kind+'.'+nonce;assert.equal((await api(8080,'/api/auth/register',null,'POST',{login,password,fullName:'Иван Петров',birthDate:'2000-01-01'})).status,201);const auth=(await api(8080,'/api/auth/login',null,'POST',{login,password})).data;return{...auth,login};}
 function pdf(r,text){assert.equal(r.status,200,JSON.stringify(r.data));const value=execFileSync('pdftotext',['-','-'],{input:r.bytes}).toString();assert.ok(value.includes(text),value);return value;}
 (async()=>{
  const owner=await user('owner'),other=await user('other'),admin=await user('admin');

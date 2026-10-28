@@ -39,6 +39,10 @@ public class RideServiceRestImpl implements RideService {
         return send("POST", URI.create(BASE + "/api/rides/" + rideId + "/pay"), jwt, "{}");
     }
 
+    @Override public JsonResponse review(String jwt, UUID rideId, String json) {
+        return send("PUT", URI.create(BASE + "/api/rides/" + rideId + "/review"), jwt, json);
+    }
+
     @Override
     public JsonResponse findByUser(String jwt, UUID userId) {
         return send("GET", URI.create(BASE + "/api/rides?userId=" + userId), jwt, null);

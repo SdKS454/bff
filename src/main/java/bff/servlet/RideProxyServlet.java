@@ -96,6 +96,14 @@ public class RideProxyServlet extends BaseServlet {
         String path = req.getPathInfo() == null ? "" : req.getPathInfo();
         req.setCharacterEncoding("UTF-8");
         try {
+            if (path.matches("^/[^/]+/review$")) {
+                java.util.UUID id = JsonText.uuid(path.split("/")[1]);
+                String json = JsonText.read(req.getInputStream());
+                JsonText.object(json); // Reject malformed JSON before forwarding; Ride validates review fields.
+                JsonResponse reviewed = rideService.review(jwt, id, json);
+                writeJson(resp, reviewed.status(), reviewed.body());
+                return;
+            }
             if (path.matches("^/[^/]+/(finish|position)$")) {
                 java.util.UUID id;
                 try { id = JsonText.uuid(path.split("/")[1]); }

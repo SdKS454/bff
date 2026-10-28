@@ -113,6 +113,16 @@ public class RideServiceImpl implements RideService {
         throw new ApiException(409, "Состояние поездки изменилось");
     }
 
+    @Override public RideEntity review(UUID userId, UUID id, ru.itis.dto.ReviewRequest request) {
+        RideEntity ride = getOwnedRide(userId, id);
+        if (!ride.getStatus().equals("FINISHED") && !ride.getStatus().equals("PAID"))
+            throw new ApiException(409, "Отзыв доступен только после завершения поездки");
+        var review = new ru.itis.model.RideReview(request.rideRating(), request.scooterRating(),
+                request.rideComment(), request.scooterComment(), now());
+        if (!rideRepository.review(id, review)) throw new ApiException(409, "Состояние поездки изменилось");
+        return getOwnedRide(userId, id);
+    }
+
     @Override
     public List<RideEntity> history(UUID userId, UUID requestedUserId) {
         if (!userId.equals(requestedUserId)) {

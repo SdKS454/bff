@@ -24,6 +24,19 @@ class ValidationTest {
         assertThrows(ApiException.class, () -> Validation.uuid("1-1-1-1-1"));
     }
 
+    @Test void requiresSixteenYearsAndAcceptsBirthdayBoundary() {
+        var boundary = java.time.LocalDate.now(java.time.ZoneOffset.UTC).minusYears(16);
+        assertEquals(boundary, Validation.birthDate(boundary.toString()));
+        assertThrows(ApiException.class, () -> Validation.birthDate(boundary.plusDays(1).toString()));
+        assertThrows(ApiException.class, () -> Validation.birthDate(java.time.LocalDate.now(java.time.ZoneOffset.UTC).toString()));
+    }
+    @Test void validatesNameFormatWithoutPretendingToVerifyIdentity() {
+        for (String name : new String[]{"Иван Петров", "Иван Петров Иванович", "Анна-Мария Петрова", "John O’Connor"})
+            assertEquals(name, Validation.fullName(name));
+        for (String name : new String[]{"huIBSOIAHUD PAISUDB AOSIDHBN", "Иван", "Иван  Петров", "Иван123 Петров", "Иван Pетров", "Иван\nПетров", "иван петров"})
+            assertThrows(ApiException.class, () -> Validation.fullName(name), name);
+    }
+
     @Test
     void bcryptWorksWithUtf8() {
         PasswordHasher hasher = new BCryptPasswordHasher(10);

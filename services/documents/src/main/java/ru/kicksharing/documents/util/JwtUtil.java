@@ -4,13 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import ru.kicksharing.documents.config.AppConfig;
 import ru.kicksharing.documents.exception.ApiException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.charset.StandardCharsets;
-import java.security.KeyFactory;
 import java.security.PublicKey;
-import java.security.spec.X509EncodedKeySpec;
-import java.util.Base64;
 import java.util.UUID;
 
 public final class JwtUtil {
@@ -21,16 +15,8 @@ public final class JwtUtil {
         if (cachedKey != null) return cachedKey;
         synchronized (JwtUtil.class) {
             if (cachedKey != null) return cachedKey;
-            try {
-                String pem = AppConfig.get("jwt.public.key");
-                String path = AppConfig.get("jwt.public.key.path");
-                if (path != null && !path.isBlank()) pem = Files.readString(Path.of(path));
-                if (pem == null || pem.isBlank()) throw new IllegalStateException("Set JWT_PUBLIC_KEY or JWT_PUBLIC_KEY_PATH");
-                String base64 = pem.replace("-----BEGIN PUBLIC KEY-----", "")
-                        .replace("-----END PUBLIC KEY-----", "").replaceAll("\\s+", "");
-                cachedKey = KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(Base64.getDecoder().decode(base64)));
-                return cachedKey;
-            } catch (Exception e) { throw new IllegalStateException("Не настроен публичный ключ RS256", e); }
+            cachedKey = JwtPublicKeyLoader.load(AppConfig.get("jwt.public.key"), AppConfig.get("jwt.public.key.path"));
+            return cachedKey;
         }
     }
 
@@ -49,7 +35,7 @@ public final class JwtUtil {
             if (value == null || !value.matches("[0-9a-fA-F-]{36}") || !value.equals(claims.getSubject()))
                 throw new IllegalArgumentException();
             return UUID.fromString(value);
-        } catch (IllegalStateException e) { throw ApiException.serviceUnavailable("Не настроен публичный ключ JWT"); }
+        } catch (IllegalStateException e) { java.util.logging.Logger.getLogger(JwtUtil.class.getName()).log(java.util.logging.Level.WARNING, "Documents JWT configuration failure", e); throw ApiException.serviceUnavailable(e.getMessage()); }
         catch (Exception e) { throw new ApiException(401, "Недействительный JWT"); }
     }
 }
